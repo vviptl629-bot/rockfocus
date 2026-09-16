@@ -9,6 +9,8 @@
 <meta name="apple-mobile-web-app-title" content="RockFocus">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-maskable-192.png">
+<link rel="apple-touch-icon" sizes="512x512" href="icon-maskable-512.png">
 <title>RockFocus · 专注记录</title>
 <style>
   :root{
@@ -137,7 +139,7 @@
   .c-title{font-size:22px;font-weight:600}
   .c-sub{font-size:14px;color:var(--muted)}
   .c-thought{width:100%;max-width:340px;margin-top:6px}
-  .c-thought textarea{width:100%;min-height:78px;background:var(--surface);border:1px solid var(--line);
+  .c-thought textarea{width:100%;min-height:78px;max-height:220px;overflow-y:auto;background:var(--surface);border:1px solid var(--line);
     border-radius:var(--r2);color:var(--txt);font-size:15px;padding:13px;resize:none;font-family:inherit}
   .c-thought textarea::placeholder{color:var(--faint)}
   .c-btns{display:flex;gap:12px;width:100%;max-width:340px;margin-top:4px}
@@ -146,9 +148,9 @@
   .cal-head{display:flex;justify-content:space-between;align-items:center;margin:2px 2px 12px}
   .cal-head .m{font-size:16px;font-weight:600}
   .cal-head button{background:none;border:none;color:var(--muted);font-size:20px;padding:4px 10px;cursor:pointer}
-  .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin:0 2px 18px}
+  .cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin:0 2px 18px}
   .cal .dow{font-size:11.5px;color:var(--muted);text-align:center;padding-bottom:2px}
-  .cal .cell{aspect-ratio:1;border-radius:9px;background:var(--surface);border:1px solid var(--line);
+  .cal .cell{height:40px;min-width:0;overflow:hidden;border-radius:9px;background:var(--surface);border:1px solid var(--line);
     display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:600;color:var(--txt);position:relative}
   .cal .cell.t{color:var(--txt)}
   .cal .cell .bar{position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:14px;height:3px;border-radius:2px;background:var(--purple)}
@@ -176,7 +178,7 @@
 
   /* thoughts */
   .th-compose{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);padding:12px;margin:0 2px 16px}
-  .th-compose textarea{width:100%;min-height:70px;background:var(--bg2);border:1px solid var(--line);
+  .th-compose textarea{width:100%;min-height:70px;max-height:240px;overflow-y:auto;background:var(--bg2);border:1px solid var(--line);
     border-radius:10px;color:var(--txt);font-size:15px;padding:11px;resize:none;font-family:inherit;line-height:1.6}
   .th-compose textarea::placeholder{color:var(--faint)}
   .th-compose button{margin-top:9px;width:100%;padding:11px;border:none;border-radius:10px;cursor:pointer;
@@ -193,7 +195,8 @@
   .th .del:active{background:var(--surface2);color:var(--txt)}
   /* 想法正文：白字内嵌黑框 */
   .th .body{background:#0c0d10;border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:12px 13px;
-    font-size:14.5px;line-height:1.65;color:#f4f4f6;white-space:pre-wrap;word-break:break-word}
+    font-size:14.5px;line-height:1.65;color:#f4f4f6;white-space:pre-wrap;word-break:break-word;
+    user-select:text;-webkit-user-select:text;-webkit-touch-callout:default;cursor:text}
   .empty{color:var(--faint);font-size:13.5px;text-align:center;padding:30px 0}
 
   /* settings */
@@ -216,6 +219,22 @@
     color:var(--txt);font-size:14px;width:100%;cursor:pointer;margin:0 2px 10px}
   .btn-danger{color:#fca5a5;border-color:rgba(252,165,165,.3)}
   .hint{font-size:12px;color:var(--faint);line-height:1.6;margin:0 6px 14px}
+
+  /* 专注进行中：隐藏底栏，避免误触切走（暂停/结束都在专注页里） */
+  body.focusing .tabbar{display:none}
+  body.focusing #app{padding-bottom:calc(22px + var(--safe-b))}
+
+  /* 键盘可访问性：可点击 div 的焦点环 */
+  [role="button"]:focus-visible,.tab:focus-visible,button:focus-visible{outline:2px solid var(--purple);outline-offset:2px;border-radius:8px}
+
+  /* 标签管理行内操作按钮 */
+  .lbl-act{font-size:12.5px;color:var(--muted);background:var(--bg2);border:1px solid var(--line);
+    border-radius:8px;padding:5px 9px;cursor:pointer;flex:none;line-height:1.2;transition:.15s}
+  .lbl-act:active{background:var(--surface2)}
+  .lbl-act.danger{color:var(--warn);border-color:var(--line2)}
+
+  /* 通用文本输入卡片（替代原生 prompt） */
+  .cin.txt input{font-size:17px;font-weight:600;text-align:left;padding:14px 2px}
 
   /* tab bar */
   .tabbar{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-around;
@@ -241,6 +260,23 @@
     background:var(--surface2);border:1px solid var(--line2);color:var(--txt);padding:11px 18px;border-radius:999px;
     font-size:13.5px;opacity:0;transition:.3s;z-index:60;pointer-events:none;max-width:88%}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  /* 矮屏（如 320×568）：压缩首页留白，保证「开始专注」落在首屏内且不被底栏压住 */
+  @media (max-height:700px){
+    .hdr{margin:2px 2px 10px}
+    .philo{display:none}
+    .stats{gap:7px;margin-bottom:11px}
+    .stat{padding:9px 4px}
+    .stat .n{font-size:19px}
+    .stat .l{margin-top:4px}
+    .sec-t{margin-bottom:6px;font-size:12.5px}
+    .labels{gap:7px;margin-bottom:9px}
+    .chip{padding:7px 12px;font-size:13.5px}
+    .durs{gap:7px;margin-bottom:11px}
+    .dur{padding:9px 0;font-size:14px}
+    .dur.cust{margin-top:0}
+    .start{padding:15px;font-size:16px}
+  }
 </style>
 </head>
 <body>
@@ -258,7 +294,7 @@
       <div class="stat"><div class="n" id="s-today">0</div><div class="l">今日分</div></div>
     </div>
 
-    <div class="sec-t"><span>选择标签</span><span id="label-edit" style="color:var(--purple);cursor:pointer">管理</span></div>
+    <div class="sec-t"><span>选择标签</span><span id="label-edit" role="button" tabindex="0" style="color:var(--purple);cursor:pointer">管理</span></div>
     <div class="labels" id="labels"></div>
 
     <div class="sec-t"><span>专注时长</span></div>
@@ -273,7 +309,7 @@
     <div class="f-time" id="f-time">25<small>:00</small></div>
     <svg class="f-hill" viewBox="0 0 340 180" id="f-hill-svg">
       <path id="hillPath" d="M 24 158 C 110 158 180 120 316 40" fill="none" stroke="var(--line2)" stroke-width="26" stroke-linecap="round"/>
-      <circle id="rock" r="13" fill="currentColor"/>
+      <circle id="rock" cx="170" cy="90" r="13" fill="currentColor"/>
     </svg>
     <div class="f-streak" id="f-streak">连续 0 天 · 已离开 0 次</div>
     <div class="f-put" id="f-put"></div>
@@ -352,7 +388,10 @@
     声音：iOS 静音拨片开启时 Safari 不播放网页声音；安卓勿扰模式会按系统设置处理。<br>
     系统通知：开启后提醒会同时弹出系统通知，点通知可直接回到应用。<br>
     无论何种模式，专注计时本身都不受影响。</p>
-    <div class="sec-t" style="margin-top:4px"><span>干扰清单（专注时先放下）</span><span id="bl-edit" style="color:var(--purple);cursor:pointer">管理</span></div>
+    <div class="sec-t" id="lbl-sec" style="margin-top:4px"><span>标签管理</span><span id="lbl-add" style="color:var(--purple);cursor:pointer" role="button" tabindex="0">+ 添加</span></div>
+    <div class="set-grp" id="lbl-list"></div>
+
+    <div class="sec-t" style="margin-top:4px"><span>干扰清单（专注时先放下）</span><span id="bl-edit" role="button" tabindex="0" style="color:var(--purple);cursor:pointer">管理</span></div>
     <div class="set-grp" id="bl-list"></div>
 
     <div class="sec-t" style="margin-top:4px"><span>跨设备同步（GitHub Gist）</span></div>
@@ -360,6 +399,7 @@
       <div class="set-row"><span class="k">Token</span><input id="in-token" type="password" placeholder="ghp_…"></div>
       <div class="set-row"><span class="k">Gist ID</span><input id="in-gist" placeholder="留空=新建"></div>
       <div class="set-row"><span class="k">自动同步</span><div class="switch on" id="sw-sync"><i></i></div></div>
+      <div class="set-row" id="sync-status"></div>
     </div>
     <button class="btn-ghost" id="btn-sync">立即同步</button>
     <p class="hint">把专注记录、标签与想法同步到你的私有 Gist，手机/桌面共用同一份数据。Token 仅保存在本机，只用于读写你自己的 Gist。</p>
@@ -400,6 +440,21 @@
   <div class="cacts">
     <button class="cancel" id="cust-cancel">取消</button>
     <button class="ok" id="cust-ok">确定</button>
+  </div>
+</div>
+
+<!-- 通用文本输入卡片（添加标签 / 重命名 / 添加干扰项），替代原生 prompt -->
+<div class="sheet-mask" id="in-mask"></div>
+<div class="sheet" id="in-sheet" role="dialog" aria-modal="true" aria-label="文本输入">
+  <div class="sheet-grip"></div>
+  <h3 id="in-title">输入</h3>
+  <div class="sd" id="in-desc"></div>
+  <div class="cin txt">
+    <input id="in-input" type="text" maxlength="24" placeholder="">
+  </div>
+  <div class="cacts" style="margin-top:14px">
+    <button class="cancel" id="in-cancel">取消</button>
+    <button class="ok" id="in-ok">确定</button>
   </div>
 </div>
 
@@ -488,16 +543,51 @@ function playAlert(ms){
   }
 }
 // 统一提醒：声音 + （可选）系统通知
-function alert(ms,title,body){
+// 注意：不叫 alert —— 覆盖浏览器原生 alert() 会埋雷（将来任何依赖原生弹窗的代码会静默失效）
+function fireAlert(ms,title,body){
   if(state.settings.alertSound)playAlert(ms);
   sendAlertNotification(title||"RockFocus 专注提醒",body||"",ms);
+}
+// 底部卡片通用的键盘/视觉视口同步（见 syncViewport）
+function btnify(el,fn){
+  el.setAttribute("role","button");
+  if(!el.hasAttribute("tabindex"))el.setAttribute("tabindex","0");
+  el.onclick=fn;
+  el.addEventListener("keydown",e=>{
+    if(e.key==="Enter"||e.key===" "||e.key==="Spacebar"){e.preventDefault();fn(e);}
+  });
+  return el;
+}
+// 输入框随内容自动增高
+function autoGrow(el,max){
+  if(!el)return;
+  el.style.height="auto";
+  el.style.height=Math.min(el.scrollHeight,max||240)+"px";
 }
 // iOS 自动播放策略：首个用户手势时创建并解锁 AudioContext
 document.addEventListener("pointerdown",()=>{getCtx();},{passive:true});
 function toast(t){const el=$("#toast");el.textContent=t;el.classList.add("show");clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove("show"),1900);}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
-const MONO=["#ffffff","#cfcfcf","#a6a6a6","#808080","#5c5c5c","#3f3f3f"];
-function monoColor(id){const i=state.labels.findIndex(l=>l.id===id);return MONO[(i<0?0:i)%MONO.length];}
+/* 标签配色：色值由标签自己的 slot 决定，与它在列表里的位置无关。
+   以前按 findIndex 取色 —— 删掉/新增一个标签，后面所有标签会集体换色，看着像数据串了。 */
+const MONO_D=["#ffffff","#cfcfcf","#a6a6a6","#808080","#5c5c5c","#3f3f3f"];
+const MONO_L=["#161616","#3a3a3a","#555555","#6f6f6f","#8a8a8a","#a5a5a5"];
+function slotSkin(){return (state.settings.theme==="light")?MONO_L:MONO_D;}
+// 给没有 slot 的标签分配一个没用过的槽位（只在首次补齐时写一次，之后增删标签都不动它）
+function assignSlots(){
+  const used=new Set(state.labels.map(l=>l.slot).filter(v=>typeof v==="number"&&v>=0));
+  state.labels.forEach(l=>{
+    if(typeof l.slot!=="number"||l.slot<0){
+      let i=0;while(used.has(i))i++;
+      l.slot=i;used.add(i);
+    }
+  });
+}
+function monoColor(id){
+  const l=state.labels.find(x=>x.id===id);
+  if(!l)return (state.settings.theme==="light")?"#8a8a8a":"#808080";
+  return slotSkin()[(l.slot||0)%6];
+}
 
 /* ---------- stats ---------- */
 function stats(){
@@ -527,29 +617,107 @@ function renderHome(){
   const wrap=$("#labels");wrap.innerHTML="";
   state.labels.forEach(l=>{
     const c=document.createElement("div");c.className="chip"+(l.id===selLabel?" on":"");
-    c.innerHTML=`<span class="dot" style="background:${monoColor(l.id)}"></span>${l.name}`;
-    c.onclick=()=>{selLabel=l.id;renderHome();};
+    c.innerHTML=`<span class="dot" style="background:${monoColor(l.id)}"></span>${escapeHtml(l.name)}`;
+    c.setAttribute("aria-pressed",l.id===selLabel?"true":"false");
+    btnify(c,()=>{selLabel=l.id;renderHome();});
     wrap.appendChild(c);
   });
   const add=document.createElement("div");add.className="chip add";add.textContent="+ 标签";
-  add.onclick=addLabel;wrap.appendChild(add);
+  add.setAttribute("aria-label","添加标签");
+  btnify(add,addLabel);wrap.appendChild(add);
   // durations
   const dw=$("#durs");dw.innerHTML="";
   PRESET_DURS.forEach(m=>{
     const b=document.createElement("div");b.className="dur"+(m===selDur?" on":"");b.textContent=m+"′";
-    b.onclick=()=>{selDur=m;renderHome();};dw.appendChild(b);
+    b.setAttribute("aria-label",m+" 分钟");
+    b.setAttribute("aria-pressed",m===selDur?"true":"false");
+    btnify(b,()=>{selDur=m;renderHome();});dw.appendChild(b);
   });
   const isCustom=!PRESET_DURS.includes(selDur);
   if(isCustom)lastCustom=selDur;
   const cust=document.createElement("div");
   cust.className="dur cust"+(isCustom?" on":"");
   cust.textContent=isCustom?(selDur+"′ 自定义"):"自定义时长";
-  cust.onclick=openCust;
+  cust.setAttribute("aria-label","自定义专注时长");
+  btnify(cust,openCust);
   dw.appendChild(cust);
 }
 function addLabel(){
-  const name=prompt("新标签名称");if(!name)return;
-  const l={id:uid(),name,color:"#cccccc"};state.labels.push(l);l.color=monoColor(l.id);selLabel=l.id;save();renderHome();toast("已添加标签");
+  openInput({
+    title:"添加标签",
+    desc:"给这个标签起个名字，之后可以在「设置 → 标签管理」里改名或删除。",
+    placeholder:"例如：阅读",
+    max:12,
+    onOk:v=>{
+      const l={id:uid(),name:v};
+      state.labels.push(l);
+      assignSlots();
+      selLabel=l.id;save();renderHome();renderSettings();
+      toast("已添加标签");
+    }
+  });
+}
+/* 通用文本输入卡片 */
+let inOk=null;
+function openInput(o){
+  inOk=o.onOk||null;
+  $("#in-title").textContent=o.title||"输入";
+  $("#in-desc").textContent=o.desc||"";
+  const i=$("#in-input");
+  i.value=o.value||"";i.placeholder=o.placeholder||"";i.maxLength=o.max||24;
+  $("#in-mask").classList.add("show");$("#in-sheet").classList.add("show");
+  setTimeout(()=>{try{i.focus();i.setSelectionRange(0,String(i.value).length);}catch(e){}},260);
+  setTimeout(syncViewport,240);setTimeout(syncViewport,560);
+}
+function closeInput(){
+  syncViewport();
+  $("#in-mask").classList.remove("show");$("#in-sheet").classList.remove("show");
+  inOk=null;
+}
+function applyInput(){
+  const v=$("#in-input").value.trim();
+  if(!v){toast("内容不能为空");return;}
+  const fn=inOk;closeInput();if(fn)fn(v);
+}
+/* 标签管理（设置页）：增 / 改名 / 删 */
+function drawLabelList(){
+  const wrap=$("#lbl-list");if(!wrap)return;wrap.innerHTML="";
+  if(!state.labels.length){
+    wrap.innerHTML='<div class="set-row" style="border:none;color:var(--faint);justify-content:center">（还没有标签）</div>';
+  }
+  state.labels.forEach(l=>{
+    const r=document.createElement("div");r.className="set-row";
+    r.innerHTML='<span class="k" style="display:flex;align-items:center;gap:8px;min-width:0">'+
+      '<span style="width:10px;height:10px;border-radius:50%;flex:none;background:'+monoColor(l.id)+'"></span>'+
+      '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escapeHtml(l.name)+'</span></span>';
+    const box=document.createElement("span");box.style.cssText="display:flex;gap:6px;flex:none";
+    const ed=document.createElement("span");ed.className="lbl-act";ed.textContent="改名";
+    btnify(ed,()=>renameLabel(l.id));
+    const del=document.createElement("span");del.className="lbl-act danger";del.textContent="删除";
+    btnify(del,()=>deleteLabel(l.id));
+    box.appendChild(ed);box.appendChild(del);r.appendChild(box);wrap.appendChild(r);
+  });
+}
+function renameLabel(id){
+  const l=state.labels.find(x=>x.id===id);if(!l)return;
+  openInput({
+    title:"重命名标签",desc:"改个更好记的名字。",placeholder:"标签名",
+    value:l.name,max:12,
+    onOk:v=>{
+      l.name=v;save();renderHome();renderSettings();renderReview();renderThoughts();
+      toast("已改名");
+    }
+  });
+}
+function deleteLabel(id){
+  const l=state.labels.find(x=>x.id===id);if(!l)return;
+  if(state.labels.length<=1){toast("至少保留一个标签");return;}
+  const n=state.sessions.filter(x=>x.labelId===id).length;
+  if(!confirm("删除标签「"+l.name+"」？"+(n?("已有 "+n+" 条记录会保留，在统计里显示为未分类。"):"")))return;
+  state.labels=state.labels.filter(x=>x.id!==id);
+  if(selLabel===id)selLabel=state.labels[0]?state.labels[0].id:null;
+  save();renderHome();renderSettings();renderReview();renderThoughts();
+  toast("已删除标签");
 }
 
 /* ---------- 键盘 / 视觉视口同步 ---------- */
@@ -596,25 +764,31 @@ $$("#cust-sheet .cstep button").forEach(b=>b.onclick=()=>{
   const i=$("#cust-input"),cur=Math.round(+i.value)||0;
   i.value=Math.max(1,Math.min(600,cur+(+b.dataset.step)));
 });
-document.addEventListener("keydown",e=>{if(e.key==="Escape")closeCust();});
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Escape")return;
+  closeCust();
+  if(typeof closeInput==="function")closeInput();
+});
 
 /* ---------- timer ---------- */
 let timer={active:false,labelId:null,totalMs:0,startTs:0,elapsed:0,paused:false,tick:null,distract:0,pathLen:0,endDone:false};
 function startFocus(){
   if(!state.labels.length){toast("请先添加标签");return;}
-  timer={active:true,labelId:selLabel,totalMs:selDur*60000,startTs:Date.now(),elapsed:0,paused:false,distract:0,endDone:false};
+  timer={active:true,labelId:selLabel,totalMs:selDur*60000,startTs:Date.now(),elapsed:0,paused:false,distract:0,shielded:false,endDone:false,tick:null,pathLen:0};
   const lbl=state.labels.find(l=>l.id===selLabel);
   $("#f-label").textContent=lbl?lbl.name:"专注";
   const bl=state.blockList.filter(Boolean);
   $("#f-put").style.display=bl.length?"block":"none";
   $("#f-put").textContent=bl.length?("这次专注，先放下："+bl.join("、")):"";
   switchView("focus");
+  document.body.classList.add("focusing");   /* 专注期间收起底栏，避免误触切走后回不来 */
   // measure path
   const p=$("#hillPath");timer.pathLen=p.getTotalLength();
   $("#rock").setAttribute("transform","translate(0,0)");
   updateFocus();
   timer.tick=setInterval(updateFocus,250);
-  alert(1200);
+  fireAlert(1200);
+  saveTimer();
 }
 function updateFocus(){
   if(!timer.active)return;
@@ -625,6 +799,9 @@ function updateFocus(){
   const p=$("#hillPath");const pt=p.getPointAtLength(prog*timer.pathLen);
   $("#rock").setAttribute("transform",`translate(${pt.x-170},${pt.y-90}) rotate(${prog*720} 170 90)`);
   $("#f-streak").textContent=`连续 ${stats().streak} 天 · 已离开 ${timer.distract} 次`;
+  // 每 5 秒落盘一次，刷新/被系统回收后可以恢复
+  const now=Date.now();
+  if(!timer._lastSave||now-timer._lastSave>5000){timer._lastSave=now;saveTimer();}
   // auto finish
   if(!timer.paused&&base>=timer.totalMs){finishSession(true);}
 }
@@ -632,6 +809,45 @@ function pauseToggle(){
   if(!timer.active)return;
   if(timer.paused){timer.paused=false;timer.startTs=Date.now()-timer.elapsed;clearInterval(timer.tick);timer.tick=setInterval(updateFocus,250);$("#pauseBtn").textContent="暂停";}
   else{timer.elapsed=Date.now()-timer.startTs;timer.paused=true;clearInterval(timer.tick);$("#pauseBtn").textContent="继续";}
+  saveTimer();
+}
+/* ---------- 计时状态落盘 / 恢复 ---------- */
+const TIMER_KEY="rockfocus_timer_v1";
+function saveTimer(){
+  try{
+    if(!timer.active){localStorage.removeItem(TIMER_KEY);return;}
+    const base=timer.paused?timer.elapsed:(Date.now()-timer.startTs);
+    localStorage.setItem(TIMER_KEY,JSON.stringify({
+      labelId:timer.labelId,totalMs:timer.totalMs,startTs:timer.startTs,elapsed:timer.elapsed,
+      paused:!!timer.paused,distract:timer.distract||0,remaining:Math.max(0,timer.totalMs-base),savedAt:Date.now()
+    }));
+  }catch(e){}
+}
+function restoreTimer(){
+  let t=null;
+  try{t=JSON.parse(localStorage.getItem(TIMER_KEY));}catch(e){}
+  if(!t||!t.labelId||!t.totalMs||typeof t.remaining!=="number")return false;
+  // 已到点、或标签被删掉了 → 判定为失效，清掉
+  if(t.remaining<=1000||!state.labels.some(l=>l.id===t.labelId)){
+    try{localStorage.removeItem(TIMER_KEY);}catch(e){}
+    return false;
+  }
+  const elapsed=t.totalMs-t.remaining;
+  timer={active:true,labelId:t.labelId,totalMs:t.totalMs,startTs:Date.now()-elapsed,elapsed:elapsed,
+    paused:false,distract:t.distract||0,shielded:true,endDone:false,tick:null,pathLen:0};
+  const lbl=state.labels.find(l=>l.id===t.labelId);
+  $("#f-label").textContent=lbl?lbl.name:"专注";
+  const bl=state.blockList.filter(Boolean);
+  $("#f-put").style.display=bl.length?"block":"none";
+  $("#f-put").textContent=bl.length?("这次专注，先放下："+bl.join("、")):"";
+  switchView("focus");
+  document.body.classList.add("focusing");
+  const p=$("#hillPath");timer.pathLen=p.getTotalLength();
+  $("#rock").setAttribute("transform","translate(0,0)");
+  updateFocus();
+  timer.tick=setInterval(updateFocus,250);
+  toast("已恢复上次未结束的专注（剩余 "+Math.ceil(t.remaining/60000)+" 分钟）");
+  return true;
 }
 function finishSession(auto){
   if(timer.endDone)return;timer.endDone=true;
@@ -641,28 +857,32 @@ function finishSession(auto){
   $("#c-title").textContent=auto?"时间到，石头登顶":"专注结束";
   $("#c-sub").textContent=`${state.labels.find(l=>l.id===timer.labelId)?.name||"专注"} · ${dur} 分钟 · 离开 ${timer.distract} 次`;
   $("#c-thought").value="";
-  switchView("complete");alert();
+  autoGrow($("#c-thought"),220);
+  switchView("complete");fireAlert();saveTimer();
   if(auto)toast("这一刻，石头到了山顶");
 }
 function commitThought(skip){
   const dur=timer._lastDur||0;
   const s={id:uid(),labelId:timer.labelId,start:timer.startTs,end:Date.now(),durationMin:dur,thought:skip?"":$("#c-thought").value.trim(),distractions:timer.distract};
   state.sessions.push(s);save();
-  timer={active:false,labelId:null,totalMs:0,startTs:0,elapsed:0,paused:false,distract:0,endDone:false};
+  timer={active:false,labelId:null,totalMs:0,startTs:0,elapsed:0,paused:false,distract:0,shielded:false,endDone:false};
+  saveTimer();
+  document.body.classList.remove("focusing");
   renderHome();renderReview();renderThoughts();
   switchView("home");toast(skip?"已记录":"已保存想法");
 }
 
 /* ---------- shield ---------- */
-let shieldShown=false;
 document.addEventListener("visibilitychange",()=>{
-  if(document.hidden&&timer.active&&!timer.paused){timer.distract++;}
-  else if(!document.hidden&&timer.active&&!timer.paused&&timer.distract>0){
+  if(document.hidden&&timer.active&&!timer.paused){timer.distract++;saveTimer();}
+  // 每次专注只拦一次：看一眼时间、回条消息不该被反复整屏打断
+  else if(!document.hidden&&timer.active&&!timer.paused&&timer.distract>0&&!timer.shielded){
+    timer.shielded=true;
     $("#shield-txt").textContent=`你离开了 ${timer.distract} 次。深呼吸，这一刻还在等你。`;
-    $("#shield").classList.add("show");shieldShown=true;alert();
+    $("#shield").classList.add("show");fireAlert();
   }
 });
-$("#shield-back").onclick=()=>{$("#shield").classList.remove("show");shieldShown=false;};
+$("#shield-back").onclick=()=>{$("#shield").classList.remove("show");};
 
 /* ---------- review ---------- */
 let calY,calM;
@@ -706,7 +926,7 @@ function drawLstat(){
   if(!arr.length){ls.innerHTML='<div class="empty">还没有专注记录</div>';return;}
   arr.forEach(a=>{
     const r=document.createElement("div");r.className="lrow";
-    r.innerHTML=`<span class="dot" style="background:${monoColor(a.id)}"></span><span class="nm">${a.name}</span>
+    r.innerHTML=`<span class="dot" style="background:${monoColor(a.id)}"></span><span class="nm">${escapeHtml(a.name)}</span>
       <span class="track"><span class="fill" style="width:${a.min/max*100}%;background:${monoColor(a.id)}"></span></span>
       <span class="vv">${a.min}分·${a.n}石</span>`;
     ls.appendChild(r);
@@ -729,16 +949,20 @@ function renderThoughts(){
     const d=new Date(it.at);
     const dd=`${d.getMonth()+1}月${d.getDate()}日 ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
     const e=document.createElement("div");e.className="th";
-    e.innerHTML=`<div class="meta"><span class="tag"><span class="dot" style="background:${l?monoColor(l.id):"#888"}"></span>${l?l.name:"随手记"}</span><span class="time">${dd}${it.min?" · "+it.min+"分":""}</span></div>
+    e.innerHTML=`<div class="meta"><span class="tag"><span class="dot" style="background:${l?monoColor(l.id):"#888"}"></span>${l?escapeHtml(l.name):"随手记"}</span><span class="time">${dd}${it.min?" · "+it.min+"分":""}</span></div>
       <div class="body">${escapeHtml(it.text)}</div>`;
     if(it.mid){
       const x=document.createElement("span");x.className="del";x.textContent="✕";
       x.title="删除";x.setAttribute("role","button");x.setAttribute("aria-label","删除这条想法");
+      x.tabIndex=0;
       x.onclick=ev=>{
         ev.stopPropagation();
         if(!confirm("删除这条想法？"))return;
         state.manualThoughts=state.manualThoughts.filter(m=>m.id!==it.mid);
         save();renderThoughts();toast("已删除");
+      };
+      x.onkeydown=ev=>{
+        if(ev.key==="Enter"||ev.key===" "||ev.key==="Spacebar"){ev.preventDefault();x.click();}
       };
       e.querySelector(".meta").appendChild(x);
     }
@@ -758,6 +982,8 @@ function renderSettings(){
   renderNotifyStatus();
   const swN=$("#sw-notify"); if(swN)swN.classList.toggle("on",!!state.settings.notify);
   $("#sw-sync").classList.toggle("on",state.settings.autoSync);
+  drawLabelList();
+  renderSyncStatus();
   drawBlockList();
 }
 function applyTheme(){
@@ -765,6 +991,10 @@ function applyTheme(){
   document.documentElement.dataset.theme=t;
   const meta=document.getElementById("metaTheme");
   if(meta)meta.content=(t==="light")?"#f3f3f5":"#0a0a0a";
+  /* iOS 独立窗口的状态栏：深色主题用白字，浅色主题必须换成 default（黑字），
+     否则浅色背景上时间是白的、几乎看不见。 */
+  const sb=document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+  if(sb)sb.content=(t==="light")?"default":"black-translucent";
 }
 /* ---------- 系统通知提醒（应用切到后台也能看到） ---------- */
 function notifySupported(){return ("Notification" in window);}
@@ -802,13 +1032,20 @@ function drawBlockList(){
   state.blockList.forEach((b,i)=>{
     const r=document.createElement("div");r.className="set-row";
     r.innerHTML=`<span class="k">${escapeHtml(b)}</span>`;
-    const x=document.createElement("span");x.textContent="✕";x.style.cssText="color:var(--faint);cursor:pointer;padding:0 6px";
-    x.onclick=()=>{state.blockList.splice(i,1);save();drawBlockList();};
+    const x=document.createElement("span");x.className="lbl-act danger";x.textContent="删除";
+    x.setAttribute("aria-label","删除 "+b);
+    btnify(x,()=>{state.blockList.splice(i,1);save();drawBlockList();});
     r.appendChild(x);wrap.appendChild(r);
   });
   const add=document.createElement("div");add.className="set-row";add.style.cursor="pointer";
   add.innerHTML=`<span class="k" style="color:var(--purple)">+ 添加干扰项</span>`;
-  add.onclick=()=>{const v=prompt("要放下的 App / 网站");if(v&&v.trim()){state.blockList.push(v.trim());save();drawBlockList();}};
+  add.setAttribute("aria-label","添加干扰项");
+  btnify(add,()=>openInput({
+    title:"添加干扰项",
+    desc:"写下一个专注时想先放下的 App 或网站。",
+    placeholder:"例如：抖音",max:20,
+    onOk:v=>{state.blockList.push(v);save();drawBlockList();toast("已添加");}
+  }));
   wrap.appendChild(add);
 }
 
@@ -829,8 +1066,15 @@ $("#pauseBtn").onclick=pauseToggle;
 $("#endBtn").onclick=()=>finishSession(false);
 $("#skipThought").onclick=()=>commitThought(true);
 $("#saveThought").onclick=()=>commitThought(false);
-$("#label-edit").onclick=()=>{switchView("settings");};
-$("#bl-edit").onclick=()=>{switchView("settings");};
+/* 首页/设置页的「管理」——以前点了跳到设置页却找不到对应区块 */
+function goSettings(sel){
+  switchView("settings");
+  setTimeout(()=>{const el=$(sel);if(el&&el.scrollIntoView)el.scrollIntoView({behavior:"smooth",block:"start"});},150);
+}
+$("#label-edit").onclick=()=>goSettings("#lbl-sec");
+$("#bl-edit").onclick=()=>goSettings("#bl-list");
+$("#lbl-add").onclick=()=>addLabel();
+$("#lbl-add").addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "||e.key==="Spacebar"){e.preventDefault();addLabel();}});
 $("#calPrev").onclick=()=>{calM--;if(calM<0){calM=11;calY--;}drawCal();};
 $("#calNext").onclick=()=>{calM++;if(calM>11){calM=0;calY++;}drawCal();};
 
@@ -840,62 +1084,153 @@ $$("#sound-seg button").forEach(b=>b.onclick=()=>{
   state.settings.soundType=b.dataset.s;save();renderSettings();playAlert();
 });
 $$("#theme-seg button").forEach(b=>b.onclick=()=>{
-  state.settings.theme=b.dataset.t;save();applyTheme();renderSettings();
+  state.settings.theme=b.dataset.t;save();applyTheme();
+  renderAll();   /* 标签配色跟着主题走，要整体重画 */
 });
-$("#btn-test-sound").onclick=()=>{getCtx();alert(ALERT_MS,"RockFocus 测试提醒","提醒声音（约 4 秒）");toast("已触发提醒（约 4 秒）");};
+$("#btn-test-sound").onclick=()=>{getCtx();fireAlert(ALERT_MS,"RockFocus 测试提醒","提醒声音（约 4 秒）");toast("已触发提醒（约 4 秒）");};
 $("#sw-sync").onclick=function(){state.settings.autoSync=!state.settings.autoSync;this.classList.toggle("on");save();if(state.settings.autoSync)startAutoSync();};
 $("#sw-notify").onclick=function(){state.settings.notify=!state.settings.notify;this.classList.toggle("on",state.settings.notify);save();if(state.settings.notify)requestNotify();setTimeout(renderNotifyStatus,300);};
 $("#in-goal").onchange=function(){state.settings.goal=Math.max(1,+this.value||60);save();};
 $("#in-token").onchange=function(){state.settings.token=this.value.trim();save();};
 $("#in-gist").onchange=function(){state.settings.gistId=this.value.trim();save();};
-$("#btn-sync").onclick=async()=>{toast("同步中…");try{await gistPull();await gistPush();renderAll();toast("已同步");}catch(e){toast("同步失败："+e.message);}};
-$("#btn-export").onclick=()=>{const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="rockfocus-backup.json";a.click();};
+$("#btn-sync").onclick=async()=>{
+  if(!state.settings.token){toast("请先填 Token");return;}
+  if(!state.settings.gistId){toast("请先填 Gist ID（或在别处已自动创建）");}
+  toast("同步中…");
+  const okPull=await gistPull();
+  const okPush=await gistPush(true);
+  renderAll();
+  toast((okPull&&okPush)?"已同步":"同步未完成，见下方状态");
+};
+/* 导出：用完释放对象链接，别把句柄留着 */
+$("#btn-export").onclick=()=>{
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");a.href=url;a.download="rockfocus-backup.json";
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+};
 /* thoughts composer */
-$("#th-save").onclick=()=>{
-  const v=$("#th-new").value.trim();
+function saveThoughtFrom(v){
   if(!v){toast("先写点内容再保存");return;}
   state.manualThoughts.push({id:uid(),at:Date.now(),text:v});
-  $("#th-new").value="";save();renderThoughts();toast("已保存想法");
+  save();renderThoughts();toast("已保存想法");
+}
+$("#th-save").onclick=()=>{
+  const el=$("#th-new");const v=el.value.trim();
+  if(!v){toast("先写点内容再保存");return;}
+  el.value="";autoGrow(el,240);
+  saveThoughtFrom(v);
 };
 
-$("#btn-reset").onclick=()=>{if(confirm("确定清空全部专注记录、标签与想法？此操作不可撤销。")){state=JSON.parse(JSON.stringify(DEFAULTS));save();applyTheme();renderAll();toast("已清空");switchView("home");}};
+$("#btn-reset").onclick=async()=>{
+  if(!confirm("确定清空全部专注记录、标签与想法？此操作不可撤销。"))return;
+  /* 只清数据，保留同步配置与偏好，否则用户清空后还得重填 Token */
+  const keep=Object.assign({},state.settings);
+  state=JSON.parse(JSON.stringify(DEFAULTS));
+  state.settings=keep;
+  assignSlots();
+  try{localStorage.removeItem(TIMER_KEY);}catch(e){}
+  save();applyTheme();renderAll();
+  /* 关键：立刻把空数据推到云端。否则推送一旦失败，45 秒后的定时拉取会把旧数据合并回来，
+     用户会看到「清空了又自己长回来」。 */
+  if(state.settings.token&&state.settings.gistId&&state.settings.autoSync){
+    clearTimeout(pushTimer);
+    const ok=await gistPush(true);
+    toast(ok?"已清空并同步到云端":"已清空本地（云端同步失败，请手动点「立即同步」）");
+  }else{
+    toast("已清空");
+  }
+  switchView("home");
+};
 
 /* ---------- Gist sync ---------- */
 let pushTimer=null;
-function schedulePush(){if(!state.settings.token||!state.settings.autoSync)return;clearTimeout(pushTimer);pushTimer=setTimeout(gistPush,800);}
-async function gistPush(){
-  if(!state.settings.token)return;
+const SYNC_LOG_KEY="rockfocus_sync_log";
+let syncLog={at:0,ok:null,msg:""};
+function loadSyncLog(){try{const v=JSON.parse(localStorage.getItem(SYNC_LOG_KEY));if(v&&typeof v==="object")syncLog=v;}catch(e){}}
+function markSync(ok,msg){
+  syncLog={at:Date.now(),ok:ok,msg:msg||""};
+  try{localStorage.setItem(SYNC_LOG_KEY,JSON.stringify(syncLog));}catch(e){}
+  renderSyncStatus();
+}
+function renderSyncStatus(){
+  const el=$("#sync-status");if(!el)return;
+  if(!state.settings.token){
+    el.innerHTML='<span class="k">同步状态</span><span class="v" style="color:var(--faint)">未配置 Token</span>';return;
+  }
+  if(!syncLog.at){
+    el.innerHTML='<span class="k">同步状态</span><span class="v" style="color:var(--muted)">尚未同步</span>';return;
+  }
+  const d=new Date(syncLog.at);
+  const hh=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+  const when=(d.toDateString()===new Date().toDateString())?("今天 "+hh):((d.getMonth()+1)+"月"+d.getDate()+"日 "+hh);
+  const ok=syncLog.ok===true;
+  el.innerHTML='<span class="k">同步状态</span><span class="v" style="color:'+(ok?"var(--good)":"var(--warn)")+'">'+
+    (ok?"✓ 上次同步 ":"✕ 上次失败 ")+when+(syncLog.msg?(" · "+escapeHtml(syncLog.msg)):"")+'</span>';
+}
+function schedulePush(){if(!state.settings.token||!state.settings.autoSync)return;clearTimeout(pushTimer);pushTimer=setTimeout(()=>gistPush(),800);}
+async function gistPush(skipPull){
+  if(!state.settings.token)return false;
+  /* 推送前先合并一次云端数据：否则两台设备都改过时，后推的会把对方改动从云端盖掉 */
+  if(!skipPull){try{await gistPull({silent:true});}catch(e){}}
   const content=JSON.stringify(state);
   const headers={"Authorization":"token "+state.settings.token,"Content-Type":"application/json"};
   try{
     if(state.settings.gistId){
-      await fetch("https://api.github.com/gists/"+state.settings.gistId,{method:"PATCH",headers,body:JSON.stringify({files:{"rockfocus.json":{content}}})});
+      const r=await fetch("https://api.github.com/gists/"+state.settings.gistId,{method:"PATCH",headers,body:JSON.stringify({files:{"rockfocus.json":{content}}})});
+      if(!r.ok)throw new Error("HTTP "+r.status);
     }else{
       const r=await fetch("https://api.github.com/gists",{method:"POST",headers,body:JSON.stringify({public:false,description:"RockFocus web",files:{"rockfocus.json":{content}}})});
+      if(!r.ok)throw new Error("HTTP "+r.status);
       const d=await r.json();if(d.id){state.settings.gistId=d.id;save();}
     }
-  }catch(e){console.warn("push fail",e);}
+    markSync(true,"已上传");
+    return true;
+  }catch(e){console.warn("push fail",e);markSync(false,"上传失败");return false;}
 }
-async function gistPull(){
-  if(!state.settings.token||!state.settings.gistId)return;
+async function gistPull(o){
+  const silent=!!(o&&o.silent);
+  if(!state.settings.token||!state.settings.gistId)return false;
   try{
     const r=await fetch("https://api.github.com/gists/"+state.settings.gistId,{headers:{"Authorization":"token "+state.settings.token}});
-    const d=await r.json();const c=d.files&&d.files["rockfocus.json"]&&d.files["rockfocus.json"].content;
-    if(c){const inc=JSON.parse(c);mergeState(inc);save();}
-  }catch(e){console.warn("pull fail",e);}
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    const d=await r.json();
+    const c=d.files&&d.files["rockfocus.json"]&&d.files["rockfocus.json"].content;
+    if(c){
+      const inc=JSON.parse(c);
+      const changed=mergeState(inc);
+      if(changed){
+        /* silent 模式只写本地，不触发推送 —— 否则 push→pull→push 会绕成死循环 */
+        if(silent){try{localStorage.setItem(LS_KEY,JSON.stringify(state));}catch(e){}}
+        else save();
+      }
+    }
+    if(!silent)markSync(true,"已下载");
+    return true;
+  }catch(e){console.warn("pull fail",e);if(!silent)markSync(false,"下载失败");return false;}
 }
 function mergeState(inc){
+  let changed=false;
   const sIds=new Set(state.sessions.map(s=>s.id));
-  (inc.sessions||[]).forEach(s=>{if(!sIds.has(s.id))state.sessions.push(s);});
+  (inc.sessions||[]).forEach(s=>{if(s&&s.id&&!sIds.has(s.id)){state.sessions.push(s);changed=true;}});
   const lIds=new Set(state.labels.map(l=>l.id));
-  (inc.labels||[]).forEach(l=>{if(!lIds.has(l.id))state.labels.push(l);});
+  (inc.labels||[]).forEach(l=>{if(l&&l.id&&!lIds.has(l.id)){state.labels.push(l);changed=true;}});
+  /* 手写想法以前漏在合并之外：另一台设备一推送就会把它们从云端抹掉 */
+  if(!Array.isArray(state.manualThoughts))state.manualThoughts=[];
+  const mIds=new Set(state.manualThoughts.map(m=>m.id));
+  (inc.manualThoughts||[]).forEach(m=>{if(m&&m.id&&!mIds.has(m.id)){state.manualThoughts.push(m);changed=true;}});
   // keep local settings (token/gist) but adopt goal/theme if present
   if(typeof inc.settings==="object"&&inc.settings){
     state.settings.goal=inc.settings.goal??state.settings.goal;
     state.settings.theme=inc.settings.theme??state.settings.theme;
     state.settings.autoSync=inc.settings.autoSync??state.settings.autoSync;
   }
-  if(Array.isArray(inc.blockList))state.blockList=inc.blockList;
+  if(Array.isArray(inc.blockList)&&JSON.stringify(inc.blockList)!==JSON.stringify(state.blockList)){
+    state.blockList=inc.blockList;changed=true;
+  }
+  if(changed)assignSlots();
+  return changed;
 }
 function startAutoSync(){
   if(!state.settings.token||!state.settings.autoSync)return;
@@ -904,9 +1239,42 @@ function startAutoSync(){
 
 /* ---------- init ---------- */
 function renderAll(){renderHome();renderReview();renderThoughts();renderSettings();}
+loadSyncLog();
+assignSlots();
 applyTheme();
 renderHome();
+renderSettings();
 if(state.settings.token&&state.settings.autoSync){gistPull().then(()=>{renderAll();startAutoSync();});}
+restoreTimer();   /* 上次没跑完的专注，刷新后接着走 */
+
+/* 通用输入卡片绑定 */
+$("#in-ok").onclick=applyInput;
+$("#in-cancel").onclick=closeInput;
+$("#in-mask").onclick=closeInput;
+$("#in-input").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();applyInput();}});
+
+/* 输入框自动增高 */
+[["#th-new",240],["#c-thought",220]].forEach(pair=>{
+  const el=$(pair[0]);if(!el)return;
+  el.addEventListener("input",()=>autoGrow(el,pair[1]));
+});
+/* 完成页：Ctrl/Cmd + Enter 直接保存想法 */
+$("#c-thought").addEventListener("keydown",e=>{
+  if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){e.preventDefault();commitThought(false);}
+});
+
+/* 开关类控件补键盘语义 */
+$$(".switch").forEach(sw=>{
+  sw.setAttribute("role","switch");
+  sw.setAttribute("tabindex","0");
+  sw.setAttribute("aria-checked",sw.classList.contains("on")?"true":"false");
+  sw.addEventListener("keydown",e=>{
+    if(e.key==="Enter"||e.key===" "||e.key==="Spacebar"){e.preventDefault();sw.click();}
+  });
+  sw.addEventListener("click",()=>{
+    setTimeout(()=>sw.setAttribute("aria-checked",sw.classList.contains("on")?"true":"false"),0);
+  });
+});
 // keep title showing remaining during focus
 document.addEventListener("visibilitychange",()=>{
   if(document.hidden&&timer.active){document.title="RockFocus · 专注中";}
