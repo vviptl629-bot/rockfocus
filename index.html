@@ -1280,18 +1280,25 @@ $("#btn-diag").onclick=async()=>{
   const out=$("#diag-out");if(!out)return;
   out.hidden=false;out.textContent="诊断中…";
   const L=[];
+  /* 指纹：只露前段+末 4 位，用来认出「这一支是哪支」，不构成完整值 */
+  const fingerprint=function(t){
+    if(t.length<=14)return t;
+    const head=(/^github_pat_/.test(t)?t.slice(0,15):t.slice(0,8));
+    return head+"…"+t.slice(-4);
+  };
   const tok=state.settings.token||"";
   L.push("【Token】"+(tok?("已填写，长度 "+tok.length):"未填写 —— 同步功能不会启动"));
   if(tok){
     const kind=/^ghp_/.test(tok)?"classic 个人令牌":(/^github_pat_/.test(tok)?"fine-grained 细粒度令牌":(/^gho_/.test(tok)?"OAuth 令牌":"前缀无法识别"));
     L.push("  类型："+kind+(/^github_pat_/.test(tok)?"\n  ⚠ 细粒度令牌必须在 GitHub 上勾选 Gists → Read and write，否则一律 403/404":""));
+    L.push("  指纹："+fingerprint(tok)+"（前段+末 4 位，用来认出是哪支，不是完整值）");
     if(/^ghp_/.test(tok)&&tok.length!==40)L.push("  ⚠ classic 令牌正常长度是 40 位，当前 "+tok.length+" 位 —— 像是复制时被截断了");
   }
   if(tok){
     try{
       const r=await fetch("https://api.github.com/user",{headers:{"Authorization":"token "+tok}});
       if(r.ok){const d=await r.json();L.push("✓ Token 有效，账号："+(d.login||"?"));}
-      else L.push("✕ Token 校验失败："+syncErrText(r.status));
+      else L.push("✕ Token 校验失败："+syncErrText(r.status)+(r.status===401?"\n  → 长度和前缀都正常也一样会 401：说明这支令牌已在 GitHub 侧失效（被吊销 / 已过期 / 已删除）。长度对只代表「没复制坏」，不代表「还能用」。\n    到 github.com/settings/tokens/new?scopes=gist 新建一支（只需勾 gist），填进来再点一次本诊断。":""));
     }catch(e){L.push("✕ "+errMsg(e));}
   }
   L.push("");
