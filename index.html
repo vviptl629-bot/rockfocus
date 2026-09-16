@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#0a0a0a">
+<meta name="theme-color" id="metaTheme" content="#0a0a0a">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="RockFocus">
@@ -16,14 +16,21 @@
     --line:rgba(255,255,255,.14); --line2:rgba(255,255,255,.30);
     --txt:#f7f7f7; --muted:#c9c9c9; --faint:#989898;
     --purple:#ffffff; --purple2:#d8d8d8; --glow:rgba(255,255,255,.18);
-    --good:#cfcfcf; --warn:#e0e0e0;
+    --good:#cfcfcf; --warn:#e0e0e0; --on-accent:#0a0a0a; --knob:#ffffff;
     --r:18px; --r2:14px;
     --safe-b:env(safe-area-inset-bottom,0px);
+  }
+  :root[data-theme="light"]{
+    --bg:#f3f3f5; --bg2:#e7e7ea; --surface:#ffffff; --surface2:#f1f1f3;
+    --line:rgba(0,0,0,.10); --line2:rgba(0,0,0,.20);
+    --txt:#161616; --muted:#5a5a5a; --faint:#8a8a8a;
+    --purple:#161616; --purple2:#333333; --glow:rgba(0,0,0,.10);
+    --good:#2f7d32; --warn:#9a6200; --on-accent:#fafafa; --knob:#161616;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;height:100%}
   body{
-    background:radial-gradient(120% 80% at 50% -10%, #1c1c1c 0%, var(--bg) 55%) fixed;
+    background:radial-gradient(120% 80% at 50% -10%, var(--bg2) 0%, var(--bg) 55%) fixed;
     color:var(--txt); font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",Roboto,sans-serif;
     -webkit-font-smoothing:antialiased; overscroll-behavior:none; user-select:none;
   }
@@ -60,12 +67,12 @@
   .durs{display:flex;gap:9px;flex-wrap:wrap;margin:0 2px 22px}
   .dur{padding:11px 0;flex:1;min-width:58px;text-align:center;border-radius:var(--r2);
     background:var(--surface);border:1px solid var(--line);font-size:15px;font-weight:600;color:var(--txt);transition:.18s}
-  .dur.on{background:linear-gradient(180deg,var(--purple),var(--purple2));border-color:transparent;color:#0a0a0a;
+  .dur.on{background:linear-gradient(180deg,var(--purple),var(--purple2));border-color:transparent;color:var(--on-accent);
     box-shadow:0 8px 22px -10px var(--glow)}
 
   /* start button */
   .start{margin:auto 2px 0;padding:17px;border:none;border-radius:var(--r);width:100%;
-    background:linear-gradient(180deg,var(--purple),var(--purple2));color:#0a0a0a;font-size:17px;font-weight:700;
+    background:linear-gradient(180deg,var(--purple),var(--purple2));color:var(--on-accent);font-size:17px;font-weight:700;
     letter-spacing:1px;box-shadow:0 12px 30px -12px var(--glow);cursor:pointer;transition:.15s}
   .start:active{transform:scale(.985)}
 
@@ -81,7 +88,7 @@
   .f-actions{display:flex;gap:12px;width:100%;max-width:340px}
   .f-btn{flex:1;padding:15px;border-radius:var(--r);border:1px solid var(--line);background:var(--surface);
     color:var(--txt);font-size:15px;font-weight:600;cursor:pointer}
-  .f-btn.end{background:linear-gradient(180deg,var(--purple),var(--purple2));border-color:transparent;color:#0a0a0a;
+  .f-btn.end{background:linear-gradient(180deg,var(--purple),var(--purple2));border-color:transparent;color:var(--on-accent);
     box-shadow:0 10px 26px -12px var(--glow)}
 
   /* COMPLETE */
@@ -154,11 +161,11 @@
   .set-row textarea{width:200px;min-height:46px;resize:none;text-align:left}
   .switch{width:46px;height:27px;border-radius:999px;background:var(--bg2);border:1px solid var(--line);position:relative;cursor:pointer;flex:none}
   .switch.on{background:var(--purple)}
-  .switch i{position:absolute;top:2px;left:2px;width:21px;height:21px;border-radius:50%;background:#fff;transition:.2s}
-  .switch.on i{left:21px;background:#0a0a0a}
+  .switch i{position:absolute;top:2px;left:2px;width:21px;height:21px;border-radius:50%;background:var(--knob);transition:.2s}
+  .switch.on i{left:21px;background:var(--on-accent)}
   .seg{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
   .seg button{background:var(--bg2);border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:7px 13px;font-size:12.5px;cursor:pointer;font-family:inherit;transition:.16s}
-  .seg button.on{background:#fff;color:#0a0a0a;border-color:#fff;font-weight:600}
+  .seg button.on{background:var(--purple);color:var(--on-accent);border-color:var(--purple);font-weight:600}
   .btn-ghost{padding:13px;border-radius:var(--r2);border:1px solid var(--line);background:var(--surface2);
     color:var(--txt);font-size:14px;width:100%;cursor:pointer;margin:0 2px 10px}
   .btn-danger{color:#fca5a5;border-color:rgba(252,165,165,.3)}
@@ -166,7 +173,7 @@
 
   /* tab bar */
   .tabbar{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-around;
-    background:rgba(10,10,10,.88);backdrop-filter:blur(18px);border-top:1px solid var(--line);
+    background:var(--surface);backdrop-filter:blur(18px);border-top:1px solid var(--line);
     padding:8px 6px calc(8px + var(--safe-b));max-width:480px;margin:0 auto;z-index:30}
   .tab{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--faint);font-size:10.5px;
     background:none;border:none;cursor:pointer;padding:4px 10px;transition:.2s}
@@ -174,15 +181,17 @@
   .tab svg{width:23px;height:23px}
 
   /* shield */
-  #shield{position:fixed;inset:0;background:radial-gradient(120% 90% at 50% 20%,#1c1c1c,#0a0a0a);
+  #shield{position:fixed;inset:0;background:radial-gradient(120% 90% at 50% 20%,var(--bg2),var(--bg));
     z-index:50;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;gap:18px}
   #shield.show{display:flex;animation:fade .4s ease}
   #shield .ic{width:96px;height:96px}
   #shield h2{font-size:23px;margin:0;font-weight:600}
   #shield p{font-size:15px;color:var(--muted);line-height:1.7;margin:0;max-width:300px}
   #shield .back{margin-top:8px;padding:15px 40px;border:none;border-radius:var(--r);
-    background:linear-gradient(180deg,var(--purple),var(--purple2));color:#0a0a0a;font-size:16px;font-weight:700;cursor:pointer;
+    background:linear-gradient(180deg,var(--purple),var(--purple2));color:var(--on-accent);font-size:16px;font-weight:700;cursor:pointer;
     box-shadow:0 12px 30px -12px var(--glow)}
+  .rock-eye{fill:var(--bg)}
+  .rock-line{stroke:var(--bg);fill:none}
 
   .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%) translateY(20px);
     background:var(--surface2);border:1px solid var(--line2);color:var(--txt);padding:11px 18px;border-radius:999px;
@@ -219,13 +228,8 @@
     <div class="f-label" id="f-label">学习</div>
     <div class="f-time" id="f-time">25<small>:00</small></div>
     <svg class="f-hill" viewBox="0 0 340 180" id="f-hill-svg">
-      <defs>
-        <linearGradient id="hg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#3a3a3a"/><stop offset="1" stop-color="#161616"/>
-        </linearGradient>
-      </defs>
-      <path id="hillPath" d="M 24 158 C 110 158 180 120 316 40" fill="none" stroke="url(#hg)" stroke-width="26" stroke-linecap="round"/>
-      <circle id="rock" r="13" fill="#f0f0f0" stroke="#ffffff" stroke-width="2"/>
+      <path id="hillPath" d="M 24 158 C 110 158 180 120 316 40" fill="none" stroke="var(--line2)" stroke-width="26" stroke-linecap="round"/>
+      <circle id="rock" r="13" fill="currentColor"/>
     </svg>
     <div class="f-streak" id="f-streak">连续 0 天 · 已离开 0 次</div>
     <div class="f-put" id="f-put"></div>
@@ -288,6 +292,13 @@
           <button data-m="both">声音+震动</button>
         </div>
       </div>
+      <div class="set-row" id="vib-status"></div>
+      <div class="set-row"><span class="k">主题</span>
+        <div class="seg" id="theme-seg">
+          <button data-t="dark">暗色</button>
+          <button data-t="light">浅色</button>
+        </div>
+      </div>
       <div class="set-row"><span class="k">声音类型</span>
         <div class="seg" id="sound-seg">
           <button data-s="bell">轻柔钟声</button>
@@ -297,8 +308,10 @@
       </div>
       <div class="set-row"><span class="k">每日目标(分)</span><input id="in-goal" type="number" inputmode="numeric"></div>
     </div>
-    <button class="btn-ghost" id="btn-test-sound">测试提醒声音</button>
-    <p class="hint">关于静音 / 勿扰：网页应用无法检测手机是否处于静音或勿扰状态。iOS 的 Safari 在静音拨片开启时<strong>不会播放网页声音</strong>，且本身<strong>不支持震动</strong>；安卓上声音与震动通常正常，但勿扰模式会按系统设置拦截。若担心错过提醒，请在系统中允许该浏览器/网页发出声音与震动。无论何种模式，专注计时本身不受影响。</p>
+    <button class="btn-ghost" id="btn-test-sound">测试提醒（声音 + 震动）</button>
+    <p class="hint">提醒时长：声音与震动会<strong>同时持续约 4 秒</strong>（3-5 秒区间），二者同步开始、同步结束。<br>
+    震动：网页使用系统 Vibration API，<strong>无需申请权限</strong>；但 <strong>iOS / Safari 不支持震动</strong>（iPhone 上「震动 / 声音+震动」会只发声）。安卓通常正常，但若系统开启<strong>勿扰 / 省电 / 减弱动态效果</strong>可能被拦截。网页<strong>无法控制震动强度</strong>（强度由设备决定），只能保证时长足够长且连续。<br>
+    声音：iOS 静音拨片开启时 Safari 不发声；安卓勿扰会按系统设置处理。专注计时本身不受任何模式影响。</p>
     <div class="sec-t" style="margin-top:4px"><span>干扰清单（专注时先放下）</span><span id="bl-edit" style="color:var(--purple);cursor:pointer">管理</span></div>
     <div class="set-grp" id="bl-list"></div>
 
@@ -360,7 +373,7 @@ const DEFAULTS={
     {id:"rest",name:"休息",color:"#3f3f3f"}
   ],
   blockList:["抖音","微博","小红书","B站","微信","游戏"],
-  settings:{haptic:true,alertMode:"both",soundType:"bell",goal:60,token:"",gistId:"",autoSync:true}
+  settings:{haptic:true,alertMode:"both",soundType:"bell",theme:"dark",goal:60,token:"",gistId:"",autoSync:true}
 };
 
 let state=load();
@@ -371,9 +384,9 @@ function save(){localStorage.setItem(LS_KEY,JSON.stringify(state));schedulePush(
 /* ---------- utils ---------- */
 function dayKey(ts){const d=new Date(ts);return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();}
 function fmtDur(ms){const s=Math.max(0,Math.round(ms/1000));const m=Math.floor(s/60),ss=s%60;return m+"<small>:"+String(ss).padStart(2,"0")+"</small>";}
-function haptic(p){if(state.settings.haptic&&navigator.vibrate)try{navigator.vibrate(p);}catch(e){}}
-
-/* ---------- sound alerts (Web Audio, no external file, offline) ---------- */
+/* ---------- 提醒：声音 + 震动（同步持续 3-5 秒）---------- */
+const ALERT_MS=4000;                        // 提醒时长：4 秒（落在 3-5 秒区间）
+const VIB_SUPPORT=('vibrate' in navigator); // iOS Safari 为 false
 const SOUNDS={
   bell:{type:"sine",gap:0,dur:1.1,notes:[784,1046.5]},
   chime:{type:"triangle",gap:0.13,dur:0.5,notes:[659.25,783.99,987.77]},
@@ -387,24 +400,42 @@ function getCtx(){
   }catch(e){return null;}
   return audioCtx;
 }
-function playTone(){
-  if(state.settings.alertMode==="vibrate")return; // 仅震动模式不发声
+// 持续的提醒声：在 ALERT_MS 窗口内重复柔和铃声，与震动同时开始、同时结束
+function playAlert(ms){
+  ms=ms||ALERT_MS;
+  if(state.settings.alertMode==="vibrate")return;      // 仅震动模式不发声
   const ctx=getCtx();if(!ctx)return;
-  const p=SOUNDS[state.settings.soundType]||SOUNDS.bell;const t=ctx.currentTime;
-  p.notes.forEach((f,i)=>{
-    const o=ctx.createOscillator(),g=ctx.createGain();
-    o.type=p.type;o.frequency.value=f;
-    const s=t+i*p.gap,d=p.dur;
-    g.gain.setValueAtTime(0.0001,s);
-    g.gain.linearRampToValueAtTime(0.2,s+0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001,s+d);
-    o.connect(g);g.connect(ctx.destination);
-    o.start(s);o.stop(s+d+0.05);
-  });
+  const p=SOUNDS[state.settings.soundType]||SOUNDS.bell;
+  const t0=ctx.currentTime+0.03;
+  const strokes=Math.max(3,Math.round(ms/1000));       // 约每秒一次，覆盖整个提醒窗口
+  const step=ms/1000/strokes;
+  for(let i=0;i<strokes;i++){
+    const s=t0+i*step;
+    p.notes.forEach((f,j)=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.type=p.type;o.frequency.value=f;
+      const gs=s+j*0.07, hold=Math.min(0.9,step*0.9);
+      g.gain.setValueAtTime(0.0001,gs);
+      g.gain.linearRampToValueAtTime(0.18,gs+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001,gs+hold);
+      o.connect(g);g.connect(ctx.destination);
+      o.start(gs);o.stop(gs+hold+0.05);
+    });
+  }
 }
-function alert(){
-  if(state.settings.alertMode==="sound"||state.settings.alertMode==="both")playTone();
-  if(state.settings.alertMode==="vibrate"||state.settings.alertMode==="both")haptic([20,40,20]);
+// 震动：持续 ALERT_MS 毫秒。Web Vibration API 无需权限；iOS Safari 不支持。
+// 注意：该 API 不能设置强度，只能保证时长足够长且连续，强度由设备决定。
+function vib(ms){
+  ms=ms||ALERT_MS;
+  if(state.settings.alertMode==="sound")return false;
+  if(!VIB_SUPPORT)return false;
+  try{return navigator.vibrate(ms)!==false;}catch(e){return false;}
+}
+// 统一提醒：声音与震动同时触发、同步持续相同时长
+function alert(ms){
+  const mode=state.settings.alertMode;
+  if(mode==="sound"||mode==="both")playAlert(ms);
+  if(mode==="vibrate"||mode==="both")vib(ms);
 }
 // iOS 自动播放策略：首个用户手势时创建并解锁 AudioContext
 document.addEventListener("pointerdown",()=>{getCtx();},{passive:true});
@@ -476,7 +507,7 @@ function startFocus(){
   $("#rock").setAttribute("transform","translate(0,0)");
   updateFocus();
   timer.tick=setInterval(updateFocus,250);
-  alert();
+  alert(1200);
 }
 function updateFocus(){
   if(!timer.active)return;
@@ -614,8 +645,24 @@ function renderSettings(){
   $("#in-gist").value=state.settings.gistId;
   $$("#alert-seg button").forEach(b=>b.classList.toggle("on",b.dataset.m===state.settings.alertMode));
   $$("#sound-seg button").forEach(b=>b.classList.toggle("on",b.dataset.s===state.settings.soundType));
+  $$("#theme-seg button").forEach(b=>b.classList.toggle("on",b.dataset.t===state.settings.theme));
+  renderVibStatus();
   $("#sw-sync").classList.toggle("on",state.settings.autoSync);
   drawBlockList();
+}
+function applyTheme(){
+  const t=state.settings.theme||"dark";
+  document.documentElement.dataset.theme=t;
+  const meta=document.getElementById("metaTheme");
+  if(meta)meta.content=(t==="light")?"#f3f3f5":"#0a0a0a";
+}
+function renderVibStatus(){
+  const el=$("#vib-status");
+  if(VIB_SUPPORT){
+    el.innerHTML='<span class="k">震动支持</span><span class="v" style="color:var(--good)">✓ 本机可用（持续约 4 秒）</span>';
+  }else{
+    el.innerHTML='<span class="k">震动支持</span><span class="v" style="color:var(--warn)">✕ 不支持（iOS/Safari 无此能力，将只发声）</span>';
+  }
 }
 function drawBlockList(){
   const wrap=$("#bl-list");wrap.innerHTML="";
@@ -660,12 +707,15 @@ $$("#alert-seg button").forEach(b=>b.onclick=()=>{
   state.settings.alertMode=b.dataset.m;save();renderSettings();
   const m={sound:"声音",vibrate:"震动","both":"声音+震动"}[b.dataset.m];
   toast("提醒方式："+m);
-  if(b.dataset.m!=="vibrate")playTone();
+  if(b.dataset.m!=="vibrate")playAlert();
 });
 $$("#sound-seg button").forEach(b=>b.onclick=()=>{
-  state.settings.soundType=b.dataset.s;save();renderSettings();playTone();
+  state.settings.soundType=b.dataset.s;save();renderSettings();playAlert();
 });
-$("#btn-test-sound").onclick=()=>{getCtx();playTone();};
+$$("#theme-seg button").forEach(b=>b.onclick=()=>{
+  state.settings.theme=b.dataset.t;save();applyTheme();renderSettings();
+});
+$("#btn-test-sound").onclick=()=>{getCtx();alert();toast(VIB_SUPPORT?"已触发提醒（声音 + 震动同时约 4 秒）":"已触发提醒（本机不支持震动，仅发声）");};
 $("#sw-sync").onclick=function(){state.settings.autoSync=!state.settings.autoSync;this.classList.toggle("on");save();if(state.settings.autoSync)startAutoSync();};
 $("#in-goal").onchange=function(){state.settings.goal=Math.max(1,+this.value||60);save();};
 $("#in-token").onchange=function(){state.settings.token=this.value.trim();save();};
@@ -680,7 +730,7 @@ $("#th-save").onclick=()=>{
   $("#th-new").value="";save();renderThoughts();toast("已保存想法");
 };
 
-$("#btn-reset").onclick=()=>{if(confirm("确定清空全部专注记录、标签与想法？此操作不可撤销。")){state=JSON.parse(JSON.stringify(DEFAULTS));save();renderAll();toast("已清空");switchView("home");}};
+$("#btn-reset").onclick=()=>{if(confirm("确定清空全部专注记录、标签与想法？此操作不可撤销。")){state=JSON.parse(JSON.stringify(DEFAULTS));save();applyTheme();renderAll();toast("已清空");switchView("home");}};
 
 /* ---------- Gist sync ---------- */
 let pushTimer=null;
@@ -726,6 +776,7 @@ function startAutoSync(){
 
 /* ---------- init ---------- */
 function renderAll(){renderHome();renderReview();renderThoughts();renderSettings();}
+applyTheme();
 renderHome();
 if(state.settings.token&&state.settings.autoSync){gistPull().then(()=>{renderAll();startAutoSync();});}
 // keep title showing remaining during focus
