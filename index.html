@@ -386,7 +386,7 @@ function dayKey(ts){const d=new Date(ts);return d.getFullYear()+"-"+(d.getMonth(
 function fmtDur(ms){const s=Math.max(0,Math.round(ms/1000));const m=Math.floor(s/60),ss=s%60;return m+"<small>:"+String(ss).padStart(2,"0")+"</small>";}
 /* ---------- 提醒：声音 + 震动（同步持续 3-5 秒）---------- */
 const ALERT_MS=4000;                        // 提醒时长：4 秒（落在 3-5 秒区间）
-const VIB_SUPPORT=('vibrate' in navigator); // iOS Safari 为 false
+const VIB_SUPPORT=(typeof (navigator.vibrate||navigator.webkitVibrate||navigator.mozVibrate)==="function"); // iOS Safari 为 false
 const SOUNDS={
   bell:{type:"sine",gap:0,dur:1.1,notes:[784,1046.5]},
   chime:{type:"triangle",gap:0.13,dur:0.5,notes:[659.25,783.99,987.77]},
@@ -428,8 +428,17 @@ function playAlert(ms){
 function vib(ms){
   ms=ms||ALERT_MS;
   if(state.settings.alertMode==="sound")return false;
-  if(!VIB_SUPPORT)return false;
-  try{return navigator.vibrate(ms)!==false;}catch(e){return false;}
+  const v=navigator.vibrate||navigator.webkitVibrate||navigator.mozVibrate;
+  if(typeof v!=="function")return false;
+  // 循环短振：600ms 振 + 120ms 停，铺满整个提醒窗口——比单次长振更明显、更兼容（部分 webview 会截断单次超长振动）
+  const ON=600,OFF=120,pat=[];let t=0;
+  while(t<ms){pat.push(ON);t+=ON;if(t<ms){pat.push(OFF);t+=OFF;}}
+  try{
+    v.call(navigator,0);                         // 先取消上一次，避免叠加
+    return v.call(navigator,pat)!==false;
+  }catch(e){
+    try{return v.call(navigator,ms)!==false;}catch(_){return false;}
+  }
 }
 // 统一提醒：声音与震动同时触发、同步持续相同时长
 function alert(ms){
