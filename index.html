@@ -661,7 +661,7 @@ function renderVibStatus(){
   if(VIB_SUPPORT){
     el.innerHTML='<span class="k">震动支持</span><span class="v" style="color:var(--good)">✓ 本机可用（持续约 4 秒）</span>';
   }else{
-    el.innerHTML='<span class="k">震动支持</span><span class="v" style="color:var(--warn)">✕ 不支持（iOS/Safari 无此能力，将只发声）</span>';
+    el.innerHTML='<span class="k">震动支持</span><span class="v" style="color:var(--warn)">✕ 当前浏览器不支持（请用 Chrome / Edge 打开本页以启用振动；将只发声）</span>';
   }
 }
 function drawBlockList(){
