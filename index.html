@@ -84,12 +84,17 @@
   .sheet-mask.show{opacity:1;pointer-events:auto}
   /* 键盘弹出时用 --kb（visualViewport 算出的键盘高度）把卡片整体抬到键盘上方 */
   html{scroll-padding-bottom:calc(90px + var(--kb,0px))}
+  /* 键盘弹出（body.kbopen）：给页面留出键盘高度的可滚动空间，
+     否则完成页这类「内容居中、页面又不可滚」的界面，输入区永远够不到 */
+  body.kbopen .tabbar{display:none}
+  body.kbopen #app{padding-bottom:calc(22px + var(--kb,0px))}
+  body.kbopen #complete{justify-content:flex-start;padding-bottom:calc(10px + var(--kb,0px))}
   .sheet{position:fixed;left:0;right:0;bottom:var(--kb,0px);z-index:61;width:100%;max-width:480px;margin:0 auto;
     background:var(--surface);border:1px solid var(--line);border-bottom:none;border-radius:22px 22px 0 0;
-    padding:10px 18px calc(18px + var(--safe-b));transform:translateY(102%);
+    padding:10px 18px calc(18px + var(--safe-b));transform:translateY(102%);visibility:hidden;
     max-height:calc(100vh - var(--kb,0px) - 10px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
-    transition:transform .28s cubic-bezier(.22,.9,.3,1);box-shadow:0 -18px 40px -18px rgba(0,0,0,.5)}
-  .sheet.show{transform:translateY(0)}
+    transition:transform .28s cubic-bezier(.22,.9,.3,1),visibility .28s;box-shadow:0 -18px 40px -18px rgba(0,0,0,.5)}
+  .sheet.show{transform:translateY(0);visibility:visible}
   .sheet.kb{padding-bottom:16px}
   .sheet-grip{width:40px;height:4px;border-radius:999px;background:var(--line2);margin:2px auto 14px}
   .sheet h3{margin:0 0 5px;font-size:16px;font-weight:700}
@@ -730,6 +735,7 @@ function syncViewport(){
   let kb=vv?Math.round(window.innerHeight-vv.height-(vv.offsetTop||0)):0;
   if(kb<24)kb=0;                                  /* 滤掉地址栏收缩等噪声 */
   document.documentElement.style.setProperty("--kb",kb+"px");
+  document.body.classList.toggle("kbopen",kb>0);
   const sh=$("#cust-sheet");if(sh)sh.classList.toggle("kb",kb>0);
 }
 if(window.visualViewport){
@@ -738,6 +744,16 @@ if(window.visualViewport){
 }
 window.addEventListener("resize",syncViewport);
 window.addEventListener("orientationchange",()=>setTimeout(syncViewport,320));
+/* 内联输入框（想法页 / 完成页）聚焦后主动滚到可视区中部：
+   底部卡片里的输入框由 --kb 负责，不动页面滚动，避免互相打架 */
+document.addEventListener("focusin",e=>{
+  const t=e.target;
+  if(!t||!t.tagName)return;
+  if(t.tagName!=="INPUT"&&t.tagName!=="TEXTAREA")return;
+  if(t.closest&&t.closest(".sheet"))return;
+  const to=()=>{try{t.scrollIntoView({block:"center",behavior:"smooth"});}catch(_){try{t.scrollIntoView();}catch(__){}}};
+  setTimeout(to,300);setTimeout(to,650);
+});
 
 /* ---------- 自定义时长卡片 ---------- */
 function openCust(){
