@@ -58,6 +58,21 @@
 
   /* label picker */
   .sec-t{font-size:13px;color:var(--muted);margin:2px 2px 10px;display:flex;justify-content:space-between;align-items:center}
+  /* 折叠分区头：点标题展开/收起，右侧操作按钮不受影响 */
+  .sec-t.fold{cursor:pointer;user-select:none;padding:6px 2px;-webkit-tap-highlight-color:transparent}
+  .sec-t .fold-l{display:flex;align-items:center;gap:7px;min-width:0}
+  .sec-t .cnt{font-size:10.5px;color:var(--faint);background:var(--bg2);border:1px solid var(--line);
+    border-radius:20px;padding:1px 7px;font-weight:500;flex:none}
+  .sec-t .cnt:empty{display:none}
+  .sec-t .chev{width:0;height:0;flex:none;margin-left:2px;display:inline-block;
+    border-left:4.5px solid transparent;border-right:4.5px solid transparent;border-top:6px solid var(--muted);
+    transition:transform .22s ease}
+  .sec-t.fold.open .chev{transform:rotate(180deg)}
+  .set-grp.collapsed{display:none}
+  /* 同步诊断输出 */
+  .diag-out{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 2px 14px;
+    font-size:11.5px;line-height:1.75;color:var(--muted);white-space:pre-wrap;word-break:break-all;
+    font-family:ui-monospace,Menlo,Consolas,monospace}
   .labels{display:flex;flex-wrap:wrap;gap:9px;margin:0 2px 18px}
   .chip{display:flex;align-items:center;gap:7px;padding:9px 14px;border-radius:999px;
     background:var(--surface);border:1px solid var(--line);font-size:14px;color:var(--txt);transition:.18s}
@@ -401,11 +416,17 @@
     声音：iOS 静音拨片开启时 Safari 不播放网页声音；安卓勿扰模式会按系统设置处理。<br>
     系统通知：开启后提醒会同时弹出系统通知，点通知可直接回到应用。<br>
     无论何种模式，专注计时本身都不受影响。</p>
-    <div class="sec-t" id="lbl-sec" style="margin-top:4px"><span>标签管理</span><span id="lbl-add" style="color:var(--purple);cursor:pointer" role="button" tabindex="0">+ 添加</span></div>
-    <div class="set-grp" id="lbl-list"></div>
+    <div class="sec-t fold" id="lbl-sec" data-fold="lbl" role="button" tabindex="0" aria-expanded="false" aria-controls="lbl-list" style="margin-top:4px">
+      <span class="fold-l">标签管理<b class="cnt" id="lbl-cnt"></b><i class="chev" aria-hidden="true"></i></span>
+      <span id="lbl-add" style="color:var(--purple);cursor:pointer" role="button" tabindex="0">+ 添加</span>
+    </div>
+    <div class="set-grp collapsed" id="lbl-list"></div>
 
-    <div class="sec-t" style="margin-top:4px"><span>干扰清单（专注时先放下）</span><span id="bl-edit" role="button" tabindex="0" style="color:var(--purple);cursor:pointer">管理</span></div>
-    <div class="set-grp" id="bl-list"></div>
+    <div class="sec-t fold" id="bl-sec" data-fold="bl" role="button" tabindex="0" aria-expanded="false" aria-controls="bl-list" style="margin-top:4px">
+      <span class="fold-l">干扰清单（专注时先放下）<b class="cnt" id="bl-cnt"></b><i class="chev" aria-hidden="true"></i></span>
+      <span id="bl-edit" role="button" tabindex="0" style="color:var(--purple);cursor:pointer">管理</span>
+    </div>
+    <div class="set-grp collapsed" id="bl-list"></div>
 
     <div class="sec-t" style="margin-top:4px"><span>跨设备同步（GitHub Gist）</span></div>
     <div class="set-grp">
@@ -415,7 +436,10 @@
       <div class="set-row" id="sync-status"></div>
     </div>
     <button class="btn-ghost" id="btn-sync">立即同步</button>
-    <p class="hint">把专注记录、标签与想法同步到你的私有 Gist，手机/桌面共用同一份数据。Token 仅保存在本机，只用于读写你自己的 Gist。</p>
+    <button class="btn-ghost" id="btn-diag">同步诊断（同步不了就点这里）</button>
+    <pre class="diag-out" id="diag-out" hidden></pre>
+    <p class="hint">把专注记录、标签与想法同步到你的私有 Gist，手机/桌面共用同一份数据。Token 仅保存在本机、<strong>不会上传到云端</strong>。<br>
+    Gist ID 留空时，会自动复用你账号里已有的 RockFocus 数据 Gist —— 避免两台设备各建一份、数据永远不相通。</p>
 
     <div class="sec-t"><span>数据</span></div>
     <button class="btn-ghost" id="btn-export">导出备份(JSON)</button>
@@ -684,9 +708,10 @@ function openInput(o){
   setTimeout(syncViewport,240);setTimeout(syncViewport,560);setTimeout(syncViewport,900);
 }
 function closeInput(){
-  syncViewport();
+  try{const i=$("#in-input");if(i&&i.blur)i.blur();}catch(e){}
   $("#in-mask").classList.remove("show");$("#in-sheet").classList.remove("show");
   inOk=null;
+  syncViewport();setTimeout(syncViewport,240);setTimeout(syncViewport,560);
 }
 function applyInput(){
   const v=$("#in-input").value.trim();
@@ -711,6 +736,7 @@ function drawLabelList(){
     btnify(del,()=>deleteLabel(l.id));
     box.appendChild(ed);box.appendChild(del);r.appendChild(box);wrap.appendChild(r);
   });
+  setFoldCount("lbl",state.labels.length);
 }
 function renameLabel(id){
   const l=state.labels.find(x=>x.id===id);if(!l)return;
@@ -745,7 +771,17 @@ let HH=window.innerHeight;            /* 无键盘时的布局视口高度 */
 const IS_TOUCH=(navigator.maxTouchPoints||0)>0;
 function isSheetEditing(){
   const a=document.activeElement;
-  return !!(a&&(a.tagName==="INPUT"||a.tagName==="TEXTAREA")&&a.closest&&a.closest(".sheet"));
+  if(!(a&&(a.tagName==="INPUT"||a.tagName==="TEXTAREA")&&a.closest&&a.closest(".sheet")))return false;
+  const sh=a.closest(".sheet");
+  /* 卡片已经关了、输入框却还留着焦点 —— 这不算「正在输入」，
+     否则键盘补偿会一直挂着（底栏消失、页面被顶高，只能刷新才恢复） */
+  if(!sh.classList.contains("show"))return false;
+  return !!(a.offsetParent!==null||a.getClientRects().length);
+}
+/* 当前是否有任何输入框处于焦点：卡片内和完成页的内联输入都算 */
+function anyInputFocused(){
+  const a=document.activeElement;
+  return !!(a&&(a.tagName==="INPUT"||a.tagName==="TEXTAREA"));
 }
 /* 兜底下限：小米 / MIUI 等内核有时既不更新 innerHeight 也不更新 visualViewport，
    键盘高度无从测得 → 用一个保守值（约 55% 屏高，封顶 380px）顶上去。
@@ -777,6 +813,7 @@ function syncViewport(){
   }else if(editing&&IS_TOUCH){
     kb=kbFloor();                        /* 两个信号都沉默：键盘在弹，但内核没告诉我们有多高 */
   }
+  if(!anyInputFocused())kb=0;      /* 没有焦点在输入框上 → 不该有任何键盘补偿 */
   if(kb<24)kb=0;
   document.documentElement.style.setProperty("--kb",kb+"px");
   /* --vvh = 真实可见高度。卡片限高必须用它：安卓上 100vh 与键盘高度不同源，
@@ -845,7 +882,11 @@ function openCust(){
   setTimeout(syncViewport,560);   /* 键盘完全弹出后再校正一次 */
   setTimeout(syncViewport,900);   /* 键盘动画结束、布局稳定后再核一次 */
 }
-function closeCust(){syncViewport();$("#cust-mask").classList.remove("show");$("#cust-sheet").classList.remove("show");}
+function closeCust(){
+  try{const i=$("#cust-input");if(i&&i.blur)i.blur();}catch(e){}
+  $("#cust-mask").classList.remove("show");$("#cust-sheet").classList.remove("show");
+  syncViewport();setTimeout(syncViewport,240);setTimeout(syncViewport,560);
+}
 function applyCust(){
   const v=Math.round(+$("#cust-input").value);
   if(!v||v<1){toast("请输入 1 分钟以上的数字");return;}
@@ -1067,6 +1108,25 @@ function renderThoughts(){
 }
 function escapeHtml(t){return t.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 
+/* ---------- 折叠分区（设置页：标签管理 / 干扰清单）---------- */
+const FOLD_KEY="rockfocus_fold";
+let folds={lbl:false,bl:false};      /* false = 收起（默认折叠展示） */
+try{const v=JSON.parse(localStorage.getItem(FOLD_KEY));if(v&&typeof v==="object")folds={lbl:!!v.lbl,bl:!!v.bl};}catch(e){}
+function saveFolds(){try{localStorage.setItem(FOLD_KEY,JSON.stringify(folds));}catch(e){}}
+function applyFold(k){
+  const head=document.querySelector('.sec-t[data-fold="'+k+'"]');if(!head)return;
+  const body=document.getElementById(head.getAttribute("aria-controls"));
+  const open=!!folds[k];
+  head.classList.toggle("open",open);
+  head.setAttribute("aria-expanded",open?"true":"false");
+  if(body)body.classList.toggle("collapsed",!open);
+}
+function toggleFold(k,force){
+  folds[k]=(force===undefined)?!folds[k]:!!force;
+  saveFolds();applyFold(k);
+}
+function setFoldCount(k,n){const el=document.getElementById(k+"-cnt");if(el)el.textContent=n?String(n):"";}
+
 /* ---------- settings ---------- */
 function renderSettings(){
   $("#in-goal").value=state.settings.goal;
@@ -1143,6 +1203,7 @@ function drawBlockList(){
     onOk:v=>{state.blockList.push(v);save();drawBlockList();toast("已添加");}
   }));
   wrap.appendChild(add);
+  setFoldCount("bl",state.blockList.length);
 }
 
 /* ---------- navigation ---------- */
@@ -1163,13 +1224,22 @@ $("#endBtn").onclick=()=>finishSession(false);
 $("#skipThought").onclick=()=>commitThought(true);
 $("#saveThought").onclick=()=>commitThought(false);
 /* 首页/设置页的「管理」——以前点了跳到设置页却找不到对应区块 */
-function goSettings(sel){
+function goSettings(sel,foldKey){
   switchView("settings");
+  if(foldKey)toggleFold(foldKey,true);   /* 折叠状态下先展开目标分区 */
   setTimeout(()=>{const el=$(sel);if(el&&el.scrollIntoView)el.scrollIntoView({behavior:"smooth",block:"start"});},150);
 }
-$("#label-edit").onclick=()=>goSettings("#lbl-sec");
-$("#bl-edit").onclick=()=>goSettings("#bl-list");
-$("#lbl-add").onclick=()=>addLabel();
+$("#label-edit").onclick=()=>goSettings("#lbl-sec","lbl");
+$("#bl-edit").onclick=e=>{e.stopPropagation();goSettings("#bl-sec","bl");};
+$("#lbl-add").onclick=e=>{e.stopPropagation();toggleFold("lbl",true);addLabel();};
+/* 折叠头：整行可点，内部按钮不触发折叠 */
+[["lbl","#lbl-sec"],["bl","#bl-sec"]].forEach(function(p){
+  const h=$(p[1]);if(!h)return;
+  h.onclick=function(e){if(e.target.closest&&e.target.closest("#lbl-add,#bl-edit"))return;toggleFold(p[0]);};
+  h.addEventListener("keydown",function(e){
+    if(e.key==="Enter"||e.key===" "||e.key==="Spacebar"){e.preventDefault();toggleFold(p[0]);}
+  });
+});
 $("#lbl-add").addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "||e.key==="Spacebar"){e.preventDefault();addLabel();}});
 $("#calPrev").onclick=()=>{calM--;if(calM<0){calM=11;calY--;}drawCal();};
 $("#calNext").onclick=()=>{calM++;if(calM>11){calM=0;calY++;}drawCal();};
@@ -1187,16 +1257,71 @@ $("#btn-test-sound").onclick=()=>{getCtx();fireAlert(ALERT_MS,"RockFocus 测试�
 $("#sw-sync").onclick=function(){state.settings.autoSync=!state.settings.autoSync;this.classList.toggle("on");save();if(state.settings.autoSync)startAutoSync();};
 $("#sw-notify").onclick=function(){state.settings.notify=!state.settings.notify;this.classList.toggle("on",state.settings.notify);save();if(state.settings.notify)requestNotify();setTimeout(renderNotifyStatus,300);};
 $("#in-goal").onchange=function(){state.settings.goal=Math.max(1,+this.value||60);save();};
-$("#in-token").onchange=function(){state.settings.token=this.value.trim();save();};
+$("#in-token").onchange=function(){
+  state.settings.token=this.value.trim();save();
+  autoAttach().then(ok=>{if(ok)toast("已接上你已有的数据 Gist");});
+};
 $("#in-gist").onchange=function(){state.settings.gistId=this.value.trim();save();};
 $("#btn-sync").onclick=async()=>{
   if(!state.settings.token){toast("请先填 Token");return;}
-  if(!state.settings.gistId){toast("请先填 Gist ID（或在别处已自动创建）");}
   toast("同步中…");
+  const okPush=await gistPush();      /* 内部顺序：静默拉取合并 → 认领已有 Gist → 上传 */
   const okPull=await gistPull();
-  const okPush=await gistPush(true);
   renderAll();
-  toast((okPull&&okPush)?"已同步":"同步未完成，见下方状态");
+  toast((okPush&&okPull)?"已同步":"同步未完成 —— 点「同步诊断」看原因");
+};
+$("#btn-diag").onclick=async()=>{
+  const out=$("#diag-out");if(!out)return;
+  out.hidden=false;out.textContent="诊断中…";
+  const L=[];
+  const tok=state.settings.token||"";
+  L.push("【Token】"+(tok?("已填写，长度 "+tok.length):"未填写 —— 同步功能不会启动"));
+  if(tok){
+    const kind=/^ghp_/.test(tok)?"classic 个人令牌":(/^github_pat_/.test(tok)?"fine-grained 细粒度令牌":(/^gho_/.test(tok)?"OAuth 令牌":"前缀无法识别"));
+    L.push("  类型："+kind+(/^github_pat_/.test(tok)?"\n  ⚠ 细粒度令牌必须在 GitHub 上勾选 Gists → Read and write，否则一律 403/404":""));
+    if(/^ghp_/.test(tok)&&tok.length!==40)L.push("  ⚠ classic 令牌正常长度是 40 位，当前 "+tok.length+" 位 —— 像是复制时被截断了");
+  }
+  if(tok){
+    try{
+      const r=await fetch("https://api.github.com/user",{headers:{"Authorization":"token "+tok}});
+      if(r.ok){const d=await r.json();L.push("✓ Token 有效，账号："+(d.login||"?"));}
+      else L.push("✕ Token 校验失败："+syncErrText(r.status));
+    }catch(e){L.push("✕ "+errMsg(e));}
+  }
+  L.push("");
+  L.push("【Gist】"+(state.settings.gistId?state.settings.gistId:"未填写"));
+  if(tok&&state.settings.gistId){
+    try{
+      const r=await fetch("https://api.github.com/gists/"+state.settings.gistId,{headers:{"Authorization":"token "+tok}});
+      if(r.ok){
+        const d=await r.json();
+        L.push("✓ 可读，云端最近更新："+new Date(d.updated_at).toLocaleString());
+        const c=d.files&&d.files["rockfocus.json"]&&d.files["rockfocus.json"].content;
+        if(c){
+          try{
+            const j=JSON.parse(c);
+            L.push("  云端内容："+(j.sessions||[]).length+" 条记录 / "+(j.manualThoughts||[]).length+" 条想法 / "+(j.labels||[]).length+" 个标签");
+            if(j.settings&&j.settings.token)L.push("  ⚠ 云端仍存着旧版上传的 Token —— 新版已不再上传，建议去 GitHub 把那个 Gist 删掉重建");
+          }catch(e){L.push("  云端内容解析失败（可能不是本应用的数据）");}
+        }else L.push("  云端还没有 rockfocus.json 文件");
+      }else L.push("✕ 读不到："+syncErrText(r.status));
+    }catch(e){L.push("✕ "+errMsg(e));}
+  }
+  if(tok){
+    try{
+      const r=await fetch("https://api.github.com/gists?per_page=100",{headers:{"Authorization":"token "+tok}});
+      if(r.ok){
+        const arr=await r.json();
+        const mine=(arr||[]).filter(g=>g&&g.files&&g.files["rockfocus.json"]);
+        L.push("");
+        L.push("【账号下的 RockFocus 数据 Gist】共 "+mine.length+" 个");
+        mine.slice(0,5).forEach(g=>L.push("  "+g.id+"  更新于 "+new Date(g.updated_at).toLocaleString()));
+        if(mine.length>1)L.push("⚠ 多于 1 个说明两台设备可能各建了一份 —— 把它们统一成最近更新的这个 Gist ID");
+        else if(mine.length===1&&state.settings.gistId&&mine[0].id!==state.settings.gistId)L.push("⚠ 你填的 Gist ID 不是这个唯一的数据 Gist");
+      }else L.push("✕ 列表读取失败："+syncErrText(r.status));
+    }catch(e){L.push("✕ "+errMsg(e));}
+  }
+  out.textContent=L.join("\n");
 };
 /* 导出：用完释放对象链接，别把句柄留着 */
 $("#btn-export").onclick=()=>{
@@ -1266,31 +1391,76 @@ function renderSyncStatus(){
     (ok?"✓ 上次同步 ":"✕ 上次失败 ")+when+(syncLog.msg?(" · "+escapeHtml(syncLog.msg)):"")+'</span>';
 }
 function schedulePush(){if(!state.settings.token||!state.settings.autoSync)return;clearTimeout(pushTimer);pushTimer=setTimeout(()=>gistPush(),800);}
+/* 把 HTTP 状态码翻译成能看懂的原因 —— 以前 401/403/404/断网一律只显示「上传失败」 */
+function syncErrText(st){
+  if(st===401)return "Token 无效或已过期（401）";
+  if(st===403)return "权限不足（403）—— fine-grained Token 要勾选 Gists: Read and write";
+  if(st===404)return "找不到 Gist（404）—— Gist ID 不对，或 Token 无权访问它";
+  if(st===422)return "提交被拒绝（422）";
+  if(st>=500)return "GitHub 服务端异常（"+st+"）";
+  return "HTTP "+st;
+}
+function errMsg(e){
+  if(e&&(e.name==="TypeError"||/Failed to fetch|NetworkError|Load failed/i.test(String(e.message||""))))return "连不上 api.github.com（网络问题）";
+  return (e&&e.message)||"未知错误";
+}
+/* 上传内容里剥掉 Token：Token 只留本机，绝不进云端 */
+function syncPayload(){
+  const copy=JSON.parse(JSON.stringify(state));
+  if(copy.settings)copy.settings.token="";
+  return JSON.stringify(copy);
+}
+/* 账号里已有的 RockFocus 数据 Gist（取最近更新的一个）：留空 Gist ID 时自动复用，
+   否则两端各建一个 Gist，数据永远不相通 —— 这是「跨设备同步不了」最常见的根因 */
+async function findExistingGist(tok){
+  try{
+    const r=await fetch("https://api.github.com/gists?per_page=100",{headers:{"Authorization":"token "+tok}});
+    if(!r.ok)return null;
+    const list=await r.json();
+    const mine=(list||[]).filter(g=>g&&g.files&&g.files["rockfocus.json"]);
+    if(!mine.length)return null;
+    mine.sort((a,b)=>String(b.updated_at||"").localeCompare(String(a.updated_at||"")));
+    return mine[0].id||null;
+  }catch(e){return null;}
+}
+async function autoAttach(){
+  if(!state.settings.token||state.settings.gistId)return false;
+  const id=await findExistingGist(state.settings.token);
+  if(!id)return false;
+  state.settings.gistId=id;
+  try{localStorage.setItem(LS_KEY,JSON.stringify(state));}catch(e){}
+  renderSettings();
+  return true;
+}
 async function gistPush(skipPull){
   if(!state.settings.token)return false;
   /* 推送前先合并一次云端数据：否则两台设备都改过时，后推的会把对方改动从云端盖掉 */
   if(!skipPull){try{await gistPull({silent:true});}catch(e){}}
-  const content=JSON.stringify(state);
+  /* 没有 Gist ID 时先认领已有 Gist，认领不到才新建 */
+  if(!state.settings.gistId)await autoAttach();
+  const content=syncPayload();
   const headers={"Authorization":"token "+state.settings.token,"Content-Type":"application/json"};
   try{
     if(state.settings.gistId){
       const r=await fetch("https://api.github.com/gists/"+state.settings.gistId,{method:"PATCH",headers,body:JSON.stringify({files:{"rockfocus.json":{content}}})});
-      if(!r.ok)throw new Error("HTTP "+r.status);
+      if(!r.ok)throw new Error(syncErrText(r.status));
     }else{
       const r=await fetch("https://api.github.com/gists",{method:"POST",headers,body:JSON.stringify({public:false,description:"RockFocus web",files:{"rockfocus.json":{content}}})});
-      if(!r.ok)throw new Error("HTTP "+r.status);
+      if(!r.ok)throw new Error(syncErrText(r.status));
       const d=await r.json();if(d.id){state.settings.gistId=d.id;save();}
     }
     markSync(true,"已上传");
     return true;
-  }catch(e){console.warn("push fail",e);markSync(false,"上传失败");return false;}
+  }catch(e){console.warn("push fail",e);markSync(false,errMsg(e));return false;}
 }
 async function gistPull(o){
   const silent=!!(o&&o.silent);
-  if(!state.settings.token||!state.settings.gistId)return false;
+  if(!state.settings.token)return false;
+  if(!state.settings.gistId)await autoAttach();      /* 首次在新设备：先把已有 Gist 认领回来 */
+  if(!state.settings.gistId)return false;
   try{
     const r=await fetch("https://api.github.com/gists/"+state.settings.gistId,{headers:{"Authorization":"token "+state.settings.token}});
-    if(!r.ok)throw new Error("HTTP "+r.status);
+    if(!r.ok)throw new Error(syncErrText(r.status));
     const d=await r.json();
     const c=d.files&&d.files["rockfocus.json"]&&d.files["rockfocus.json"].content;
     if(c){
@@ -1304,7 +1474,7 @@ async function gistPull(o){
     }
     if(!silent)markSync(true,"已下载");
     return true;
-  }catch(e){console.warn("pull fail",e);if(!silent)markSync(false,"下载失败");return false;}
+  }catch(e){console.warn("pull fail",e);if(!silent)markSync(false,errMsg(e));return false;}
 }
 function mergeState(inc){
   let changed=false;
@@ -1328,9 +1498,11 @@ function mergeState(inc){
   if(changed)assignSlots();
   return changed;
 }
+let syncTimer=null;
 function startAutoSync(){
   if(!state.settings.token||!state.settings.autoSync)return;
-  setInterval(async()=>{await gistPull();renderAll();},45000);
+  if(syncTimer)clearInterval(syncTimer);     /* 反复开关不再叠加定时器 */
+  syncTimer=setInterval(async()=>{await gistPull();renderAll();},45000);
 }
 
 /* ---------- init ---------- */
@@ -1338,9 +1510,16 @@ function renderAll(){renderHome();renderReview();renderThoughts();renderSettings
 loadSyncLog();
 assignSlots();
 applyTheme();
+applyFold("lbl");applyFold("bl");
 renderHome();
 renderSettings();
-if(state.settings.token&&state.settings.autoSync){gistPull().then(()=>{renderAll();startAutoSync();});}
+if(state.settings.token&&state.settings.autoSync){
+  (async()=>{await autoAttach();await gistPull();renderAll();startAutoSync();})();
+}
+/* 回到前台立刻同步一次：以前最多要等 45 秒才看到另一台设备的改动 */
+document.addEventListener("visibilitychange",()=>{
+  if(!document.hidden&&state.settings.token&&state.settings.autoSync){gistPull().then(()=>renderAll());}
+});
 restoreTimer();   /* 上次没跑完的专注，刷新后接着走 */
 
 /* 通用输入卡片绑定 */
