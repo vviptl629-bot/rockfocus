@@ -1,4 +1,4 @@
-const CACHE = "rockfocus-v14";
+const CACHE = "rockfocus-v15";
 const NAV_KEY = "index.html"; // 导航请求统一用缓存里的 index.html 兜底
 const SHELL = [
   "index.html",
