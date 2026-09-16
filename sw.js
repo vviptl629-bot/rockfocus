@@ -1,4 +1,4 @@
-const CACHE = "rockfocus-v3";
+const CACHE = "rockfocus-v4";
 const SHELL = ["index.html", "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", (e) => {
