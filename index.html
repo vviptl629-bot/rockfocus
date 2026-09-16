@@ -285,22 +285,7 @@
   <section id="settings" class="view">
     <div class="hdr"><h1>设置</h1><span class="sub">RockFocus</span></div>
     <div class="set-grp">
-      <div class="set-row"><span class="k">提醒方式</span>
-        <div class="seg" id="alert-seg">
-          <button data-m="sound">声音</button>
-          <button data-m="vibrate">震动</button>
-          <button data-m="both">声音+震动</button>
-        </div>
-      </div>
-      <div class="set-row" id="vib-status"></div>
-      <div class="set-row"><span class="k">系统通知（可振动）</span><div class="switch on" id="sw-notify"><i></i></div></div>
-      <div class="set-row" id="notify-status"></div>
-      <div class="set-row"><span class="k">主题</span>
-        <div class="seg" id="theme-seg">
-          <button data-t="dark">暗色</button>
-          <button data-t="light">浅色</button>
-        </div>
-      </div>
+      <div class="set-row"><span class="k">声音提醒</span><div class="switch on" id="sw-sound"><i></i></div></div>
       <div class="set-row"><span class="k">声音类型</span>
         <div class="seg" id="sound-seg">
           <button data-s="bell">轻柔钟声</button>
@@ -308,12 +293,21 @@
           <button data-s="beep">双声提示</button>
         </div>
       </div>
+      <div class="set-row"><span class="k">系统通知提醒</span><div class="switch on" id="sw-notify"><i></i></div></div>
+      <div class="set-row" id="notify-status"></div>
+      <div class="set-row"><span class="k">主题</span>
+        <div class="seg" id="theme-seg">
+          <button data-t="dark">暗色</button>
+          <button data-t="light">浅色</button>
+        </div>
+      </div>
       <div class="set-row"><span class="k">每日目标(分)</span><input id="in-goal" type="number" inputmode="numeric"></div>
     </div>
-    <button class="btn-ghost" id="btn-test-sound">测试提醒（声音 + 震动）</button>
-    <p class="hint">提醒时长：声音与震动会<strong>同时持续约 4 秒</strong>（3-5 秒区间），二者同步开始、同步结束。<br>
-    震动：优先走网页 Vibration API（<strong>无需权限</strong>）——但小米浏览器等部分浏览器<strong>不实现该接口</strong>，页面内无法振动，此时请开启上方<strong>「系统通知」</strong>：提醒会以系统通知弹出，其振动由系统「响铃 / 静音时震动」控制，可绕过浏览器限制。iOS / Safari <strong>任何浏览器都不支持页面振动</strong>。网页<strong>无法控制振动强度</strong>（由设备决定），只能保证时长足够长且连续。<br>
-    声音：iOS 静音拨片开启时 Safari 不发声；安卓勿扰会按系统设置处理。专注计时本身不受任何模式影响。</p>
+    <button class="btn-ghost" id="btn-test-sound">测试提醒声音</button>
+    <p class="hint">提醒：专注开始轻响一声；<strong>专注结束</strong>与<strong>离开标签页弹回专注盾</strong>时会持续提醒约 4 秒。<br>
+    声音：iOS 静音拨片开启时 Safari 不播放网页声音；安卓勿扰模式会按系统设置处理。<br>
+    系统通知：开启后提醒会同时弹出系统通知，点通知可直接回到应用。<br>
+    无论何种模式，专注计时本身都不受影响。</p>
     <div class="sec-t" style="margin-top:4px"><span>干扰清单（专注时先放下）</span><span id="bl-edit" style="color:var(--purple);cursor:pointer">管理</span></div>
     <div class="set-grp" id="bl-list"></div>
 
@@ -375,20 +369,24 @@ const DEFAULTS={
     {id:"rest",name:"休息",color:"#3f3f3f"}
   ],
   blockList:["抖音","微博","小红书","B站","微信","游戏"],
-  settings:{haptic:true,alertMode:"both",soundType:"bell",theme:"dark",notify:true,goal:60,token:"",gistId:"",autoSync:true}
+  settings:{alertSound:true,soundType:"bell",theme:"dark",notify:true,goal:60,token:"",gistId:"",autoSync:true}
 };
 
 let state=load();
 if(!Array.isArray(state.manualThoughts))state.manualThoughts=[];
+if(!state.settings)state.settings={};
+if(typeof state.settings.alertSound!=="boolean")state.settings.alertSound=true;
+if(typeof state.settings.notify!=="boolean")state.settings.notify=true;
+if(!state.settings.theme)state.settings.theme="dark";
+if(!state.settings.soundType)state.settings.soundType="bell";
 function load(){try{const r=JSON.parse(localStorage.getItem(LS_KEY));if(r&&r.labels)return r;}catch(e){}return JSON.parse(JSON.stringify(DEFAULTS));}
 function save(){localStorage.setItem(LS_KEY,JSON.stringify(state));schedulePush();}
 
 /* ---------- utils ---------- */
 function dayKey(ts){const d=new Date(ts);return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();}
 function fmtDur(ms){const s=Math.max(0,Math.round(ms/1000));const m=Math.floor(s/60),ss=s%60;return m+"<small>:"+String(ss).padStart(2,"0")+"</small>";}
-/* ---------- 提醒：声音 + 震动（同步持续 3-5 秒）---------- */
-const ALERT_MS=4000;                        // 提醒时长：4 秒（落在 3-5 秒区间）
-const VIB_SUPPORT=(typeof (navigator.vibrate||navigator.webkitVibrate||navigator.mozVibrate)==="function"); // iOS Safari 为 false
+/* ---------- 提醒：声音（持续约 4 秒）---------- */
+const ALERT_MS=4000;                        // 提醒时长：约 4 秒
 const SOUNDS={
   bell:{type:"sine",gap:0,dur:1.1,notes:[784,1046.5]},
   chime:{type:"triangle",gap:0.13,dur:0.5,notes:[659.25,783.99,987.77]},
@@ -402,10 +400,10 @@ function getCtx(){
   }catch(e){return null;}
   return audioCtx;
 }
-// 持续的提醒声：在 ALERT_MS 窗口内重复柔和铃声，与震动同时开始、同时结束
+// 持续的提醒声：在 ALERT_MS 窗口内重复柔和铃声
 function playAlert(ms){
   ms=ms||ALERT_MS;
-  if(state.settings.alertMode==="vibrate")return;      // 仅震动模式不发声
+  if(!state.settings.alertSound)return;                // 关闭声音提醒时不发声
   const ctx=getCtx();if(!ctx)return;
   const p=SOUNDS[state.settings.soundType]||SOUNDS.bell;
   const t0=ctx.currentTime+0.03;
@@ -425,29 +423,9 @@ function playAlert(ms){
     });
   }
 }
-// 震动：持续 ALERT_MS 毫秒。Web Vibration API 无需权限；iOS Safari 不支持。
-// 注意：该 API 不能设置强度，只能保证时长足够长且连续，强度由设备决定。
-function vib(ms){
-  ms=ms||ALERT_MS;
-  if(state.settings.alertMode==="sound")return false;
-  const v=navigator.vibrate||navigator.webkitVibrate||navigator.mozVibrate;
-  if(typeof v!=="function")return false;
-  // 循环短振：600ms 振 + 120ms 停，铺满整个提醒窗口——比单次长振更明显、更兼容（部分 webview 会截断单次超长振动）
-  const ON=600,OFF=120,pat=[];let t=0;
-  while(t<ms){pat.push(ON);t+=ON;if(t<ms){pat.push(OFF);t+=OFF;}}
-  try{
-    v.call(navigator,0);                         // 先取消上一次，避免叠加
-    return v.call(navigator,pat)!==false;
-  }catch(e){
-    try{return v.call(navigator,ms)!==false;}catch(_){return false;}
-  }
-}
-// 统一提醒：声音与震动同时触发、同步持续相同时长
+// 统一提醒：声音 + （可选）系统通知
 function alert(ms,title,body){
-  const mode=state.settings.alertMode;
-  if(mode==="sound"||mode==="both")playAlert(ms);
-  if(mode==="vibrate"||mode==="both")vib(ms);
-  // 系统通知：其振动由系统「响铃 / 静音时震动」控制，可绕过浏览器无 Vibration API 的限制
+  if(state.settings.alertSound)playAlert(ms);
   sendAlertNotification(title||"RockFocus 专注提醒",body||"",ms);
 }
 // iOS 自动播放策略：首个用户手势时创建并解锁 AudioContext
@@ -656,10 +634,9 @@ function renderSettings(){
   $("#in-goal").value=state.settings.goal;
   $("#in-token").value=state.settings.token;
   $("#in-gist").value=state.settings.gistId;
-  $$("#alert-seg button").forEach(b=>b.classList.toggle("on",b.dataset.m===state.settings.alertMode));
+  const swS=$("#sw-sound"); if(swS)swS.classList.toggle("on",!!state.settings.alertSound);
   $$("#sound-seg button").forEach(b=>b.classList.toggle("on",b.dataset.s===state.settings.soundType));
   $$("#theme-seg button").forEach(b=>b.classList.toggle("on",b.dataset.t===state.settings.theme));
-  renderVibStatus();
   renderNotifyStatus();
   const swN=$("#sw-notify"); if(swN)swN.classList.toggle("on",!!state.settings.notify);
   $("#sw-sync").classList.toggle("on",state.settings.autoSync);
@@ -671,21 +648,8 @@ function applyTheme(){
   const meta=document.getElementById("metaTheme");
   if(meta)meta.content=(t==="light")?"#f3f3f5":"#0a0a0a";
 }
-function renderVibStatus(){
-  const el=$("#vib-status");
-  if(VIB_SUPPORT){
-    el.innerHTML='<span class="k">震动支持</span><span class="v" style="color:var(--good)">✓ 本机可用（持续约 4 秒）</span>';
-  }else{
-    el.innerHTML='<span class="k">震动支持</span><span class="v" style="color:var(--warn)">✕ 当前浏览器不支持（请用 Chrome / Edge 打开本页以启用振动；将只发声）</span>';
-  }
-}
-/* ---------- 系统通知（振动走系统「响铃/静音时震动」渠道，可绕过浏览器无 Vibration API 的限制） ---------- */
+/* ---------- 系统通知提醒（应用切到后台也能看到） ---------- */
 function notifySupported(){return ("Notification" in window);}
-function notifyVibPattern(ms){
-  const ON=600,OFF=120,pat=[];let t=0;
-  while(t<ms){pat.push(ON);t+=ON;if(t<ms){pat.push(OFF);t+=OFF;}}
-  return pat;
-}
 function requestNotify(){
   if(!notifySupported()){toast("当前浏览器不支持系统通知");return;}
   try{Notification.requestPermission().then(()=>{renderNotifyStatus();});}catch(e){}
@@ -694,7 +658,7 @@ function sendAlertNotification(title,body,ms){
   if(!state.settings.notify)return false;
   if(!notifySupported()||Notification.permission!=="granted")return false;
   const opts={body:body||"",tag:"rockfocus-alert",renotify:true,silent:false,
-    vibrate:notifyVibPattern(ms||ALERT_MS),icon:"icon-192.png",badge:"icon-192.png"};
+    icon:"icon-192.png",badge:"icon-192.png"};
   try{
     if("serviceWorker" in navigator){
       navigator.serviceWorker.ready
@@ -711,7 +675,7 @@ function renderNotifyStatus(){
     el.innerHTML='<span class="k">通知权限</span><span class="v" style="color:var(--warn)">✕ 当前浏览器不支持系统通知</span>';return;
   }
   const p=Notification.permission;
-  const txt=p==="granted"?"✓ 已授权（提醒会弹系统通知，并按你系统的「响铃/静音时震动」处理振动）":(p==="denied"?"✕ 已被拒绝，请在浏览器设置里允许通知":"未授权 —— 点开上面的开关即可授权");
+  const txt=p==="granted"?"✓ 已授权（提醒会弹出系统通知）":(p==="denied"?"✕ 已被拒绝，请在浏览器设置里允许通知":"未授权 —— 点开上面的开关即可授权");
   el.innerHTML='<span class="k">通知权限</span><span class="v" style="color:'+(p==="granted"?"var(--good)":"var(--warn)")+'">'+txt+'</span>';
 }
 function drawBlockList(){
@@ -753,19 +717,14 @@ $("#calPrev").onclick=()=>{calM--;if(calM<0){calM=11;calY--;}drawCal();};
 $("#calNext").onclick=()=>{calM++;if(calM>11){calM=0;calY++;}drawCal();};
 
 /* settings bindings */
-$$("#alert-seg button").forEach(b=>b.onclick=()=>{
-  state.settings.alertMode=b.dataset.m;save();renderSettings();
-  const m={sound:"声音",vibrate:"震动","both":"声音+震动"}[b.dataset.m];
-  toast("提醒方式："+m);
-  if(b.dataset.m!=="vibrate")playAlert();
-});
+$("#sw-sound").onclick=function(){state.settings.alertSound=!state.settings.alertSound;this.classList.toggle("on",state.settings.alertSound);save();if(state.settings.alertSound)playAlert();};
 $$("#sound-seg button").forEach(b=>b.onclick=()=>{
   state.settings.soundType=b.dataset.s;save();renderSettings();playAlert();
 });
 $$("#theme-seg button").forEach(b=>b.onclick=()=>{
   state.settings.theme=b.dataset.t;save();applyTheme();renderSettings();
 });
-$("#btn-test-sound").onclick=()=>{getCtx();alert(ALERT_MS,"RockFocus 测试提醒","声音 + 振动（约 4 秒）");toast(VIB_SUPPORT?"已触发提醒（声音 + 震动同时约 4 秒）":"已触发提醒（本浏览器无页面振动，已同时尝试系统通知振动）");};
+$("#btn-test-sound").onclick=()=>{getCtx();alert(ALERT_MS,"RockFocus 测试提醒","提醒声音（约 4 秒）");toast("已触发提醒（约 4 秒）");};
 $("#sw-sync").onclick=function(){state.settings.autoSync=!state.settings.autoSync;this.classList.toggle("on");save();if(state.settings.autoSync)startAutoSync();};
 $("#sw-notify").onclick=function(){state.settings.notify=!state.settings.notify;this.classList.toggle("on",state.settings.notify);save();if(state.settings.notify)requestNotify();setTimeout(renderNotifyStatus,300);};
 $("#in-goal").onchange=function(){state.settings.goal=Math.max(1,+this.value||60);save();};
@@ -812,10 +771,10 @@ function mergeState(inc){
   (inc.sessions||[]).forEach(s=>{if(!sIds.has(s.id))state.sessions.push(s);});
   const lIds=new Set(state.labels.map(l=>l.id));
   (inc.labels||[]).forEach(l=>{if(!lIds.has(l.id))state.labels.push(l);});
-  // keep local settings (token/gist) but adopt goal/haptic if present
+  // keep local settings (token/gist) but adopt goal/theme if present
   if(typeof inc.settings==="object"&&inc.settings){
     state.settings.goal=inc.settings.goal??state.settings.goal;
-    state.settings.haptic=inc.settings.haptic??state.settings.haptic;
+    state.settings.theme=inc.settings.theme??state.settings.theme;
     state.settings.autoSync=inc.settings.autoSync??state.settings.autoSync;
   }
   if(Array.isArray(inc.blockList))state.blockList=inc.blockList;
