@@ -14,7 +14,7 @@
   :root{
     --bg:#0a0a0a; --bg2:#141414; --surface:#161616; --surface2:#1f1f1f;
     --line:rgba(255,255,255,.14); --line2:rgba(255,255,255,.30);
-    --txt:#f2f2f2; --muted:#a0a0a0; --faint:#666666;
+    --txt:#f7f7f7; --muted:#c9c9c9; --faint:#989898;
     --purple:#ffffff; --purple2:#d8d8d8; --glow:rgba(255,255,255,.18);
     --good:#cfcfcf; --warn:#e0e0e0;
     --r:18px; --r2:14px;
@@ -27,6 +27,7 @@
     color:var(--txt); font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",Roboto,sans-serif;
     -webkit-font-smoothing:antialiased; overscroll-behavior:none; user-select:none;
   }
+  input,textarea{user-select:text;-webkit-user-select:text}
   #app{max-width:480px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;
     padding:max(14px,env(safe-area-inset-top)) 16px calc(74px + var(--safe-b));}
   .view{display:none;flex:1;animation:fade .35s ease}
@@ -43,8 +44,8 @@
   .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:0 2px 18px}
   .stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);
     padding:12px 6px;text-align:center}
-  .stat .n{font-size:21px;font-weight:700;color:var(--purple);line-height:1}
-  .stat .l{font-size:10.5px;color:var(--muted);margin-top:6px}
+  .stat .n{font-size:22px;font-weight:700;color:var(--txt);line-height:1}
+  .stat .l{font-size:11px;color:var(--muted);margin-top:6px}
 
   /* label picker */
   .sec-t{font-size:13px;color:var(--muted);margin:2px 2px 10px;display:flex;justify-content:space-between;align-items:center}
@@ -59,12 +60,12 @@
   .durs{display:flex;gap:9px;flex-wrap:wrap;margin:0 2px 22px}
   .dur{padding:11px 0;flex:1;min-width:58px;text-align:center;border-radius:var(--r2);
     background:var(--surface);border:1px solid var(--line);font-size:15px;font-weight:600;color:var(--txt);transition:.18s}
-  .dur.on{background:linear-gradient(180deg,var(--purple),var(--purple2));border-color:transparent;color:#fff;
+  .dur.on{background:linear-gradient(180deg,var(--purple),var(--purple2));border-color:transparent;color:#0a0a0a;
     box-shadow:0 8px 22px -10px var(--glow)}
 
   /* start button */
   .start{margin:auto 2px 0;padding:17px;border:none;border-radius:var(--r);width:100%;
-    background:linear-gradient(180deg,var(--purple),var(--purple2));color:#fff;font-size:17px;font-weight:700;
+    background:linear-gradient(180deg,var(--purple),var(--purple2));color:#0a0a0a;font-size:17px;font-weight:700;
     letter-spacing:1px;box-shadow:0 12px 30px -12px var(--glow);cursor:pointer;transition:.15s}
   .start:active{transform:scale(.985)}
 
@@ -80,7 +81,7 @@
   .f-actions{display:flex;gap:12px;width:100%;max-width:340px}
   .f-btn{flex:1;padding:15px;border-radius:var(--r);border:1px solid var(--line);background:var(--surface);
     color:var(--txt);font-size:15px;font-weight:600;cursor:pointer}
-  .f-btn.end{background:linear-gradient(180deg,var(--purple),var(--purple2));border-color:transparent;color:#fff;
+  .f-btn.end{background:linear-gradient(180deg,var(--purple),var(--purple2));border-color:transparent;color:#0a0a0a;
     box-shadow:0 10px 26px -12px var(--glow)}
 
   /* COMPLETE */
@@ -99,12 +100,12 @@
   .cal-head .m{font-size:16px;font-weight:600}
   .cal-head button{background:none;border:none;color:var(--muted);font-size:20px;padding:4px 10px;cursor:pointer}
   .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin:0 2px 18px}
-  .cal .dow{font-size:11px;color:var(--faint);text-align:center;padding-bottom:2px}
+  .cal .dow{font-size:11.5px;color:var(--muted);text-align:center;padding-bottom:2px}
   .cal .cell{aspect-ratio:1;border-radius:9px;background:var(--surface);border:1px solid var(--line);
-    display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted);position:relative}
+    display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:600;color:var(--txt);position:relative}
   .cal .cell.t{color:var(--txt)}
   .cal .cell .bar{position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:14px;height:3px;border-radius:2px;background:var(--purple)}
-  .cal .cell.emp0{opacity:.5}
+  .cal .cell.emp0{opacity:.32}
   .cal .empty{background:transparent;border:none}
   .legend{display:flex;gap:6px;align-items:center;font-size:11px;color:var(--faint);margin:0 2px 18px;justify-content:flex-end}
   .legend i{width:11px;height:11px;border-radius:3px;display:inline-block;background:var(--purple)}
@@ -114,8 +115,8 @@
   .wk{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
   .wk .bar{width:100%;max-width:30px;border-radius:8px 8px 4px 4px;background:linear-gradient(180deg,var(--purple),var(--purple2));
     min-height:4px;transition:.3s}
-  .wk .d{font-size:11px;color:var(--muted)}
-  .wk .v{font-size:10px;color:var(--faint)}
+  .wk .d{font-size:11.5px;color:var(--muted)}
+  .wk .v{font-size:11px;color:var(--txt);font-weight:600}
 
   /* label stats */
   .lstat{display:flex;flex-direction:column;gap:11px;margin:0 2px}
@@ -127,12 +128,19 @@
   .lrow .vv{width:74px;text-align:right;font-size:12px;color:var(--muted);flex:none}
 
   /* thoughts */
+  .th-compose{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);padding:12px;margin:0 2px 16px}
+  .th-compose textarea{width:100%;min-height:70px;background:var(--bg2);border:1px solid var(--line);
+    border-radius:10px;color:var(--txt);font-size:15px;padding:11px;resize:none;font-family:inherit;line-height:1.6}
+  .th-compose textarea::placeholder{color:var(--faint)}
+  .th-compose button{margin-top:9px;width:100%;padding:11px;border:none;border-radius:10px;cursor:pointer;
+    background:linear-gradient(180deg,var(--purple),var(--purple2));color:#0a0a0a;font-size:14px;font-weight:700}
   .th-list{display:flex;flex-direction:column;gap:12px;margin:0 2px}
-  .th{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);padding:14px}
+  .th{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);padding:14px;position:relative}
   .th .meta{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:8px}
   .th .tag{display:inline-flex;align-items:center;gap:5px}
   .th .tag .dot{width:8px;height:8px;border-radius:50%}
-  .th .body{font-size:14.5px;line-height:1.6;color:var(--txt)}
+  .th .body{font-size:14.5px;line-height:1.6;color:var(--txt);white-space:pre-wrap;word-break:break-word}
+  .th .del{position:absolute;top:10px;right:12px;color:var(--faint);font-size:14px;cursor:pointer;padding:4px 6px}
   .empty{color:var(--faint);font-size:13.5px;text-align:center;padding:30px 0}
 
   /* settings */
@@ -147,7 +155,7 @@
   .switch{width:46px;height:27px;border-radius:999px;background:var(--bg2);border:1px solid var(--line);position:relative;cursor:pointer;flex:none}
   .switch.on{background:var(--purple)}
   .switch i{position:absolute;top:2px;left:2px;width:21px;height:21px;border-radius:50%;background:#fff;transition:.2s}
-  .switch.on i{left:21px}
+  .switch.on i{left:21px;background:#0a0a0a}
   .seg{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
   .seg button{background:var(--bg2);border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:7px 13px;font-size:12.5px;cursor:pointer;font-family:inherit;transition:.16s}
   .seg button.on{background:#fff;color:#0a0a0a;border-color:#fff;font-weight:600}
@@ -158,7 +166,7 @@
 
   /* tab bar */
   .tabbar{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-around;
-    background:rgba(21,13,32,.86);backdrop-filter:blur(18px);border-top:1px solid var(--line);
+    background:rgba(10,10,10,.88);backdrop-filter:blur(18px);border-top:1px solid var(--line);
     padding:8px 6px calc(8px + var(--safe-b));max-width:480px;margin:0 auto;z-index:30}
   .tab{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--faint);font-size:10.5px;
     background:none;border:none;cursor:pointer;padding:4px 10px;transition:.2s}
@@ -173,7 +181,7 @@
   #shield h2{font-size:23px;margin:0;font-weight:600}
   #shield p{font-size:15px;color:var(--muted);line-height:1.7;margin:0;max-width:300px}
   #shield .back{margin-top:8px;padding:15px 40px;border:none;border-radius:var(--r);
-    background:linear-gradient(180deg,var(--purple),var(--purple2));color:#fff;font-size:16px;font-weight:700;cursor:pointer;
+    background:linear-gradient(180deg,var(--purple),var(--purple2));color:#0a0a0a;font-size:16px;font-weight:700;cursor:pointer;
     box-shadow:0 12px 30px -12px var(--glow)}
 
   .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%) translateY(20px);
@@ -262,6 +270,10 @@
   <!-- THOUGHTS -->
   <section id="thoughts" class="view">
     <div class="hdr"><h1>想法</h1><span class="sub" id="th-count"></span></div>
+    <div class="th-compose">
+      <textarea id="th-new" placeholder="随手记一条想法…"></textarea>
+      <button id="th-save">保存想法</button>
+    </div>
     <div class="th-list" id="th-list"></div>
   </section>
 
@@ -338,6 +350,7 @@ const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 
 const DEFAULTS={
   sessions:[],
+  manualThoughts:[],
   labels:[
     {id:"work",name:"工作",color:"#ffffff"},
     {id:"study",name:"学习",color:"#cfcfcf"},
@@ -351,6 +364,7 @@ const DEFAULTS={
 };
 
 let state=load();
+if(!Array.isArray(state.manualThoughts))state.manualThoughts=[];
 function load(){try{const r=JSON.parse(localStorage.getItem(LS_KEY));if(r&&r.labels)return r;}catch(e){}return JSON.parse(JSON.stringify(DEFAULTS));}
 function save(){localStorage.setItem(LS_KEY,JSON.stringify(state));schedulePush();}
 
@@ -564,16 +578,30 @@ function drawLstat(){
 /* ---------- thoughts ---------- */
 function renderThoughts(){
   const list=$("#th-list");list.innerHTML="";
-  const withT=state.sessions.filter(s=>s.thought).sort((a,b)=>b.end-a.end);
-  $("#th-count").textContent=withT.length+" 条";
-  if(!withT.length){list.innerHTML='<div class="empty">还没有写下想法</div>';return;}
-  withT.forEach(s=>{
-    const l=state.labels.find(x=>x.id===s.labelId);
-    const d=new Date(s.end);
+  const items=[];
+  state.sessions.forEach(s=>{
+    if(s.thought)items.push({at:s.end,text:s.thought,tag:s.labelId,min:s.durationMin});
+  });
+  state.manualThoughts.forEach(m=>items.push({at:m.at,text:m.text,mid:m.id}));
+  items.sort((a,b)=>b.at-a.at);
+  $("#th-count").textContent=items.length+" 条";
+  if(!items.length){list.innerHTML='<div class="empty">在上面写下第一条想法吧</div>';return;}
+  items.forEach(it=>{
+    const l=state.labels.find(x=>x.id===it.tag);
+    const d=new Date(it.at);
     const dd=`${d.getMonth()+1}月${d.getDate()}日 ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
     const e=document.createElement("div");e.className="th";
-    e.innerHTML=`<div class="meta"><span class="tag"><span class="dot" style="background:${l?monoColor(l.id):"#888"}"></span>${l?l.name:"专注"}</span><span>${dd} · ${s.durationMin}分</span></div>
-      <div class="body">${escapeHtml(s.thought)}</div>`;
+    e.innerHTML=`<div class="meta"><span class="tag"><span class="dot" style="background:${l?monoColor(l.id):"#888"}"></span>${l?l.name:"随手记"}</span><span>${dd}${it.min?" · "+it.min+"分":""}</span></div>
+      <div class="body">${escapeHtml(it.text)}</div>`;
+    if(it.mid){
+      const x=document.createElement("span");x.className="del";x.textContent="✕";x.title="删除";
+      x.onclick=()=>{
+        if(!confirm("删除这条想法？"))return;
+        state.manualThoughts=state.manualThoughts.filter(m=>m.id!==it.mid);
+        save();renderThoughts();toast("已删除");
+      };
+      e.appendChild(x);
+    }
     list.appendChild(e);
   });
 }
@@ -644,6 +672,14 @@ $("#in-token").onchange=function(){state.settings.token=this.value.trim();save()
 $("#in-gist").onchange=function(){state.settings.gistId=this.value.trim();save();};
 $("#btn-sync").onclick=async()=>{toast("同步中…");try{await gistPull();await gistPush();renderAll();toast("已同步");}catch(e){toast("同步失败："+e.message);}};
 $("#btn-export").onclick=()=>{const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="rockfocus-backup.json";a.click();};
+/* thoughts composer */
+$("#th-save").onclick=()=>{
+  const v=$("#th-new").value.trim();
+  if(!v){toast("先写点内容再保存");return;}
+  state.manualThoughts.push({id:uid(),at:Date.now(),text:v});
+  $("#th-new").value="";save();renderThoughts();toast("已保存想法");
+};
+
 $("#btn-reset").onclick=()=>{if(confirm("确定清空全部专注记录、标签与想法？此操作不可撤销。")){state=JSON.parse(JSON.stringify(DEFAULTS));save();renderAll();toast("已清空");switchView("home");}};
 
 /* ---------- Gist sync ---------- */
