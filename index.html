@@ -92,7 +92,7 @@
   .sheet{position:fixed;left:0;right:0;bottom:var(--kb,0px);z-index:61;width:100%;max-width:480px;margin:0 auto;
     background:var(--surface);border:1px solid var(--line);border-bottom:none;border-radius:22px 22px 0 0;
     padding:10px 18px calc(18px + var(--safe-b));transform:translateY(102%);visibility:hidden;
-    max-height:calc(100vh - var(--kb,0px) - 10px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+    max-height:calc(var(--vvh,100vh) - 10px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
     transition:transform .28s cubic-bezier(.22,.9,.3,1),visibility .28s;box-shadow:0 -18px 40px -18px rgba(0,0,0,.5)}
   .sheet.show{transform:translateY(0);visibility:visible}
   .sheet.kb{padding-bottom:16px}
@@ -110,12 +110,21 @@
   .cstep button{flex:1;padding:13px 0;font-size:15px;font-weight:600;border-radius:var(--r2);
     border:1px solid var(--line);background:var(--surface2);color:var(--txt);cursor:pointer;transition:.15s}
   .cstep button:active{transform:scale(.97)}
-  .cacts{display:flex;gap:10px}
+  /* 键盘弹出后卡片会被限高滚动：按钮行 sticky 贴底，保证「确定」始终够得到 */
+  .cacts{display:flex;gap:10px;position:sticky;bottom:0;background:var(--surface);padding-top:8px}
   .cacts button{flex:1;padding:15px 0;border-radius:var(--r2);font-size:15.5px;cursor:pointer;border:none;transition:.15s}
   .cacts .cancel{background:var(--surface2);border:1px solid var(--line);color:var(--txt);font-weight:600}
   .cacts .ok{background:linear-gradient(180deg,var(--purple),var(--purple2));color:var(--on-accent);font-weight:700;
     box-shadow:0 10px 24px -12px var(--glow)}
   .cacts button:active{transform:scale(.985)}
+  /* 极端兜底：个别内核测不准键盘高度、卡片被抬起后「确定」仍被压住时，
+     在右上角（键盘永远够不到的位置）浮出一个「确定」药丸，保证这一步一定能完成。
+     正常设备上按钮本来可见，这个药丸不会出现。 */
+  .kb-ok{position:fixed;right:12px;top:calc(10px + env(safe-area-inset-top,0px));z-index:70;display:none;
+    align-items:center;padding:10px 16px;border:none;border-radius:999px;cursor:pointer;font-size:14px;font-weight:700;
+    background:linear-gradient(180deg,var(--purple),var(--purple2));color:var(--on-accent);
+    box-shadow:0 10px 24px -12px var(--glow)}
+  .kb-ok.show{display:inline-flex}
 
   /* start button */
   .start{margin:auto 2px 0;padding:17px;border:none;border-radius:var(--r);width:100%;
@@ -198,9 +207,8 @@
   .th .del{flex:none;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;
     margin:-5px -7px -5px 0;border-radius:9px;color:var(--faint);font-size:13px;line-height:1;cursor:pointer;transition:.15s}
   .th .del:active{background:var(--surface2);color:var(--txt)}
-  /* 想法正文：白字内嵌黑框 */
-  .th .body{background:#0c0d10;border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:12px 13px;
-    font-size:14.5px;line-height:1.65;color:#f4f4f6;white-space:pre-wrap;word-break:break-word;
+  /* 想法正文：与页面同一套配色（跟随主题），不加黑框 */
+  .th .body{font-size:14.5px;line-height:1.65;color:var(--txt);white-space:pre-wrap;word-break:break-word;
     user-select:text;-webkit-user-select:text;-webkit-touch-callout:default;cursor:text}
   .empty{color:var(--faint);font-size:13.5px;text-align:center;padding:30px 0}
 
@@ -463,6 +471,7 @@
   </div>
 </div>
 
+<button class="kb-ok" id="kb-ok" type="button" aria-label="确定">确定</button>
 <div class="toast" id="toast"></div>
 
 <nav class="tabbar">
@@ -672,7 +681,7 @@ function openInput(o){
   i.value=o.value||"";i.placeholder=o.placeholder||"";i.maxLength=o.max||24;
   $("#in-mask").classList.add("show");$("#in-sheet").classList.add("show");
   setTimeout(()=>{try{i.focus();i.setSelectionRange(0,String(i.value).length);}catch(e){}},260);
-  setTimeout(syncViewport,240);setTimeout(syncViewport,560);
+  setTimeout(syncViewport,240);setTimeout(syncViewport,560);setTimeout(syncViewport,900);
 }
 function closeInput(){
   syncViewport();
@@ -730,13 +739,76 @@ function deleteLabel(id){
    这里用 visualViewport 算出被键盘占掉的高度写入 --kb，让 .sheet 的 bottom 跟着抬起；
    .sheet 同时限高可滚动，保证「数字输入框 / 步进 / 确定」始终完整可见。
    若浏览器支持 interactive-widget=resizes-content，innerHeight 会同步变小、算出的 kb≈0，不会重复上移。 */
+let kbSettle=null;
+let vvRest=null;                      /* 无键盘时的视觉视口高度：聚焦前后的差值才是可靠的键盘高度 */
+let HH=window.innerHeight;            /* 无键盘时的布局视口高度 */
+const IS_TOUCH=(navigator.maxTouchPoints||0)>0;
+function isSheetEditing(){
+  const a=document.activeElement;
+  return !!(a&&(a.tagName==="INPUT"||a.tagName==="TEXTAREA")&&a.closest&&a.closest(".sheet"));
+}
+/* 兜底下限：小米 / MIUI 等内核有时既不更新 innerHeight 也不更新 visualViewport，
+   键盘高度无从测得 → 用一个保守值（约 55% 屏高，封顶 380px）顶上去。
+   宁可把卡片抬得略高，也不让最下面的「确定」被键盘盖住。 */
+function kbFloor(){return Math.min(380,Math.max(240,Math.round(window.innerHeight*.55)));}
+/* 安全余量：实测部分内核会把 visualViewport.height 报大 26~100px（把输入法候选栏算进了可见区），
+   按它算出的键盘高度偏小、卡片就沉到键盘下面。这里按内核给不同的余量垫底。 */
+const KB_PAD=/miui|xiaomi|redmi|huawei|honor|ucbrowser|quark|mqqbrowser|baidubox|heytap/i.test(navigator.userAgent)?96:64;
 function syncViewport(){
   const vv=window.visualViewport;
-  let kb=vv?Math.round(window.innerHeight-vv.height-(vv.offsetTop||0)):0;
-  if(kb<24)kb=0;                                  /* 滤掉地址栏收缩等噪声 */
+  const vvH=vv?vv.height:window.innerHeight;
+  const vvTop=(vv&&vv.offsetTop)||0;
+  const editing=isSheetEditing();
+  const sheetOpen=document.querySelector(".sheet.show");
+  const pill=$("#kb-ok");
+  if(pill&&!sheetOpen)pill.classList.remove("show");
+  if(!editing){vvRest=vvH;HH=Math.max(HH,window.innerHeight);}   /* 没在输入 → 刷新「无键盘」基准 */
+  const shrunkH=window.innerHeight<=HH-24;                        /* 布局视口被键盘压缩 */
+  const shrunkVv=vvRest!=null?Math.round(vvRest-vvH-vvTop):0;     /* 视觉视口被键盘压小的量 */
+  let kb=0;
+  if(shrunkH){
+    /* resizes-content：fixed 会自己贴到缩小后的视口底。
+       但输入法的候选栏 / 工具条是系统浮层、不计入 webview 高度，所以再留一段安全余量 */
+    kb=(editing&&IS_TOUCH)?56:0;
+  }else if(shrunkVv>=24){
+    /* vv 确实变小了 → 可信就按它算；只小了一点点（< 屏高 25%）说明它把候选栏也算进了可见区、
+       报得不准 → 走保守下限 */
+    kb=(shrunkVv<Math.max(180,window.innerHeight*.25)&&editing&&IS_TOUCH)?kbFloor():shrunkVv+KB_PAD;
+  }else if(editing&&IS_TOUCH){
+    kb=kbFloor();                        /* 两个信号都沉默：键盘在弹，但内核没告诉我们有多高 */
+  }
+  if(kb<24)kb=0;
   document.documentElement.style.setProperty("--kb",kb+"px");
+  /* --vvh = 真实可见高度。卡片限高必须用它：安卓上 100vh 与键盘高度不同源，
+     两者相减会把卡片压扁、把最下面的「确定」按钮裁掉 */
+  document.documentElement.style.setProperty("--vvh",Math.round(vvH)+"px");
   document.body.classList.toggle("kbopen",kb>0);
-  const sh=$("#cust-sheet");if(sh)sh.classList.toggle("kb",kb>0);
+  $$(".sheet").forEach(s=>s.classList.toggle("kb",kb>0));
+  /* 键盘弹出动画期间 visualViewport 会连续触发，等它稳定后再做一次实测校正 */
+  clearTimeout(kbSettle);kbSettle=setTimeout(refineKb,340);
+}
+/* 实测校正：直接量卡片的真实位置，底边越出可见区多少就补抬多少
+   （bottom 与 kb 是 1:1 关系，单轮即收敛）。只补抬、不回收，避免与上面的策略互相拉扯。 */
+function refineKb(){
+  const vv=window.visualViewport;
+  const vvBottom=(vv?vv.height:window.innerHeight)+((vv&&vv.offsetTop)||0);
+  const open=document.querySelector(".sheet.show");
+  if(!open)return;
+  const over=Math.round(open.getBoundingClientRect().bottom-vvBottom);
+  const cur=parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--kb"))||0;
+  if(over>1){
+    const next=Math.min(720,cur+over);
+    document.documentElement.style.setProperty("--kb",next+"px");
+    document.body.classList.toggle("kbopen",next>0);
+  }
+  try{open.scrollTop=open.scrollHeight;}catch(e){}   /* 卡片被限高时，把按钮滚进可见区 */
+  /* 实测「确定」是否仍被键盘压住：是就把右上角的药丸浮出来 */
+  const ok=open.querySelector(".cacts .ok");
+  const pill=$("#kb-ok");
+  if(pill&&ok){
+    const r=ok.getBoundingClientRect();
+    pill.classList.toggle("show",(r.bottom>vvBottom-2||r.top<-2)&&isSheetEditing());
+  }
 }
 if(window.visualViewport){
   window.visualViewport.addEventListener("resize",syncViewport);
@@ -750,10 +822,17 @@ document.addEventListener("focusin",e=>{
   const t=e.target;
   if(!t||!t.tagName)return;
   if(t.tagName!=="INPUT"&&t.tagName!=="TEXTAREA")return;
-  if(t.closest&&t.closest(".sheet"))return;
+  if(t.closest&&t.closest(".sheet")){syncViewport();setTimeout(syncViewport,150);return;}  /* 卡片内输入：立刻重算键盘高度 */
   const to=()=>{try{t.scrollIntoView({block:"center",behavior:"smooth"});}catch(_){try{t.scrollIntoView();}catch(__){}}};
   setTimeout(to,300);setTimeout(to,650);
 });
+
+/* 兜底药丸：直接触发当前打开卡片里的「确定」 */
+const okPill=$("#kb-ok");
+if(okPill)okPill.onclick=()=>{
+  const s=document.querySelector(".sheet.show");if(!s)return;
+  const b=s.querySelector(".cacts .ok");if(b)b.click();
+};
 
 /* ---------- 自定义时长卡片 ---------- */
 function openCust(){
@@ -764,6 +843,7 @@ function openCust(){
   setTimeout(()=>{try{i.focus();i.setSelectionRange(0,String(i.value).length);}catch(e){}},260);
   setTimeout(syncViewport,240);   /* 卡片滑出时先抬一次 */
   setTimeout(syncViewport,560);   /* 键盘完全弹出后再校正一次 */
+  setTimeout(syncViewport,900);   /* 键盘动画结束、布局稳定后再核一次 */
 }
 function closeCust(){syncViewport();$("#cust-mask").classList.remove("show");$("#cust-sheet").classList.remove("show");}
 function applyCust(){
