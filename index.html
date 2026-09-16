@@ -69,6 +69,42 @@
     background:var(--surface);border:1px solid var(--line);font-size:15px;font-weight:600;color:var(--txt);transition:.18s}
   .dur.on{background:linear-gradient(180deg,var(--purple),var(--purple2));border-color:transparent;color:var(--on-accent);
     box-shadow:0 8px 22px -10px var(--glow)}
+  /* 自定义时长：独占一行，作为“入口”而不是第 6 个数值 */
+  .dur.cust{flex:0 0 100%;margin-top:2px;display:flex;align-items:center;justify-content:center;gap:7px;
+    color:var(--muted);font-weight:600}
+  .dur.cust::before{content:"";width:14px;height:14px;border:1.6px solid currentColor;border-radius:4px;
+    background:linear-gradient(currentColor,currentColor) center/7px 1.6px no-repeat;opacity:.85}
+  .dur.cust.on{color:var(--on-accent);font-weight:700}
+
+  /* 自定义时长底部卡片（替代原生 prompt 弹窗） */
+  .sheet-mask{position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+    opacity:0;pointer-events:none;transition:opacity .22s;z-index:60}
+  .sheet-mask.show{opacity:1;pointer-events:auto}
+  .sheet{position:fixed;left:0;right:0;bottom:0;z-index:61;width:100%;max-width:480px;margin:0 auto;
+    background:var(--surface);border:1px solid var(--line);border-bottom:none;border-radius:22px 22px 0 0;
+    padding:10px 18px calc(18px + var(--safe-b));transform:translateY(102%);
+    transition:transform .28s cubic-bezier(.22,.9,.3,1);box-shadow:0 -18px 40px -18px rgba(0,0,0,.5)}
+  .sheet.show{transform:translateY(0)}
+  .sheet-grip{width:40px;height:4px;border-radius:999px;background:var(--line2);margin:2px auto 14px}
+  .sheet h3{margin:0 0 5px;font-size:16px;font-weight:700}
+  .sheet .sd{font-size:12.5px;color:var(--muted);margin-bottom:14px;line-height:1.55}
+  .cin{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--line);
+    border-radius:var(--r2);padding:4px 14px;transition:.18s}
+  .cin:focus-within{border-color:var(--line2);box-shadow:0 0 0 3px var(--glow)}
+  .cin input{flex:1;min-width:0;background:none;border:none;outline:none;color:var(--txt);
+    font-size:30px;font-weight:700;text-align:center;padding:10px 0;-moz-appearance:textfield;appearance:textfield}
+  .cin input::-webkit-outer-spin-button,.cin input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .cin .u{flex:none;font-size:13px;color:var(--muted);font-weight:600}
+  .cstep{display:flex;gap:10px;margin:10px 0 14px}
+  .cstep button{flex:1;padding:13px 0;font-size:15px;font-weight:600;border-radius:var(--r2);
+    border:1px solid var(--line);background:var(--surface2);color:var(--txt);cursor:pointer;transition:.15s}
+  .cstep button:active{transform:scale(.97)}
+  .cacts{display:flex;gap:10px}
+  .cacts button{flex:1;padding:15px 0;border-radius:var(--r2);font-size:15.5px;cursor:pointer;border:none;transition:.15s}
+  .cacts .cancel{background:var(--surface2);border:1px solid var(--line);color:var(--txt);font-weight:600}
+  .cacts .ok{background:linear-gradient(180deg,var(--purple),var(--purple2));color:var(--on-accent);font-weight:700;
+    box-shadow:0 10px 24px -12px var(--glow)}
+  .cacts button:active{transform:scale(.985)}
 
   /* start button */
   .start{margin:auto 2px 0;padding:17px;border:none;border-radius:var(--r);width:100%;
@@ -190,8 +226,6 @@
   #shield .back{margin-top:8px;padding:15px 40px;border:none;border-radius:var(--r);
     background:linear-gradient(180deg,var(--purple),var(--purple2));color:var(--on-accent);font-size:16px;font-weight:700;cursor:pointer;
     box-shadow:0 12px 30px -12px var(--glow)}
-  .rock-eye{fill:var(--bg)}
-  .rock-line{stroke:var(--bg);fill:none}
 
   .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%) translateY(20px);
     background:var(--surface2);border:1px solid var(--line2);color:var(--txt);padding:11px 18px;border-radius:999px;
@@ -242,9 +276,9 @@
   <!-- COMPLETE -->
   <section id="complete" class="view">
     <svg class="c-rock" viewBox="0 0 100 100">
-      <circle cx="50" cy="54" r="26" fill="#f0f0f0" stroke="#ffffff" stroke-width="3"/>
-      <path d="M38 50 q12 -10 24 2" fill="none" stroke="#555555" stroke-width="3" stroke-linecap="round"/>
-      <circle cx="44" cy="48" r="2.4" fill="#222222"/><circle cx="56" cy="48" r="2.4" fill="#222222"/>
+      <circle cx="50" cy="54" r="26" fill="var(--txt)" stroke="var(--txt)" stroke-width="3"/>
+      <path d="M38 50 q12 -10 24 2" fill="none" stroke="var(--bg)" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="44" cy="48" r="2.4" fill="var(--bg)"/><circle cx="56" cy="48" r="2.4" fill="var(--bg)"/>
     </svg>
     <div class="c-title" id="c-title">专注完成</div>
     <div class="c-sub" id="c-sub"></div>
@@ -330,13 +364,33 @@
 <!-- SHIELD -->
 <div id="shield">
   <svg class="ic" viewBox="0 0 100 100">
-    <path d="M50 8 L86 22 V50 C86 74 70 88 50 94 C30 88 14 74 14 50 V22 Z" fill="none" stroke="#ffffff" stroke-width="3"/>
-    <circle cx="50" cy="46" r="11" fill="#f0f0f0"/>
-    <path d="M40 70 q10 -8 20 0" fill="none" stroke="#f0f0f0" stroke-width="3" stroke-linecap="round"/>
+    <path d="M50 8 L86 22 V50 C86 74 70 88 50 94 C30 88 14 74 14 50 V22 Z" fill="none" stroke="var(--txt)" stroke-width="3"/>
+    <circle cx="50" cy="46" r="11" fill="var(--txt)"/>
+    <path d="M40 70 q10 -8 20 0" fill="none" stroke="var(--bg)" stroke-width="3" stroke-linecap="round"/>
   </svg>
   <h2>回到石头旁</h2>
   <p id="shield-txt">你离开了一次。深呼吸，这一刻还在等你。</p>
   <button class="back" id="shield-back">回到专注</button>
+</div>
+
+<!-- 自定义时长：底部卡片（替代原生 prompt 弹窗） -->
+<div class="sheet-mask" id="cust-mask"></div>
+<div class="sheet" id="cust-sheet" role="dialog" aria-modal="true" aria-label="自定义专注时长">
+  <div class="sheet-grip"></div>
+  <h3>自定义专注时长</h3>
+  <div class="sd">直接输入分钟数，或用 −5 / +5 微调（1–600 分钟）</div>
+  <div class="cin">
+    <input id="cust-input" type="number" inputmode="numeric" min="1" max="600" step="1" placeholder="30">
+    <span class="u">分钟</span>
+  </div>
+  <div class="cstep">
+    <button data-step="-5">− 5</button>
+    <button data-step="5">+ 5</button>
+  </div>
+  <div class="cacts">
+    <button class="cancel" id="cust-cancel">取消</button>
+    <button class="ok" id="cust-ok">确定</button>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -451,6 +505,8 @@ function minutesOn(ts){const k=dayKey(ts);return state.sessions.filter(s=>dayKey
 
 /* ---------- render: home ---------- */
 let selLabel=state.labels[0].id, selDur=25;
+const PRESET_DURS=[5,15,25,45,60];   // 预设时长（已移除 90 分钟）
+let lastCustom=30;                    // 记住上次自定义的分钟数
 function renderHome(){
   const st=stats();
   $("#s-stones").textContent=st.stones;
@@ -469,18 +525,47 @@ function renderHome(){
   add.onclick=addLabel;wrap.appendChild(add);
   // durations
   const dw=$("#durs");dw.innerHTML="";
-  [15,25,45,60,90].forEach(m=>{
+  PRESET_DURS.forEach(m=>{
     const b=document.createElement("div");b.className="dur"+(m===selDur?" on":"");b.textContent=m+"′";
     b.onclick=()=>{selDur=m;renderHome();};dw.appendChild(b);
   });
-  const cust=document.createElement("div");cust.className="dur"+(![15,25,45,60,90].includes(selDur)?" on":"");cust.textContent="自定义";
-  cust.onclick=()=>{const v=prompt("自定义时长（分钟）",selDur);if(v&&+v>0){selDur=Math.round(+v);renderHome();}};
+  const isCustom=!PRESET_DURS.includes(selDur);
+  if(isCustom)lastCustom=selDur;
+  const cust=document.createElement("div");
+  cust.className="dur cust"+(isCustom?" on":"");
+  cust.textContent=isCustom?(selDur+"′ 自定义"):"自定义时长";
+  cust.onclick=openCust;
   dw.appendChild(cust);
 }
 function addLabel(){
   const name=prompt("新标签名称");if(!name)return;
   const l={id:uid(),name,color:"#cccccc"};state.labels.push(l);l.color=monoColor(l.id);selLabel=l.id;save();renderHome();toast("已添加标签");
 }
+
+/* ---------- 自定义时长卡片 ---------- */
+function openCust(){
+  const i=$("#cust-input");
+  i.value=PRESET_DURS.includes(selDur)?lastCustom:selDur;
+  $("#cust-mask").classList.add("show");
+  $("#cust-sheet").classList.add("show");
+  setTimeout(()=>{try{i.focus();i.setSelectionRange(0,String(i.value).length);}catch(e){}},260);
+}
+function closeCust(){$("#cust-mask").classList.remove("show");$("#cust-sheet").classList.remove("show");}
+function applyCust(){
+  const v=Math.round(+$("#cust-input").value);
+  if(!v||v<1){toast("请输入 1 分钟以上的数字");return;}
+  selDur=Math.min(600,v);lastCustom=selDur;closeCust();renderHome();
+  toast("专注时长："+selDur+" 分钟");
+}
+$("#cust-ok").onclick=applyCust;
+$("#cust-cancel").onclick=closeCust;
+$("#cust-mask").onclick=closeCust;
+$("#cust-input").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();applyCust();}});
+$$("#cust-sheet .cstep button").forEach(b=>b.onclick=()=>{
+  const i=$("#cust-input"),cur=Math.round(+i.value)||0;
+  i.value=Math.max(1,Math.min(600,cur+(+b.dataset.step)));
+});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeCust();});
 
 /* ---------- timer ---------- */
 let timer={active:false,labelId:null,totalMs:0,startTs:0,elapsed:0,paused:false,tick:null,distract:0,pathLen:0,endDone:false};
@@ -796,8 +881,9 @@ document.addEventListener("visibilitychange",()=>{
 });
 
 // register service worker (offline + installable PWA)
+// 立即注册、不等 window.load：让 SW 尽早接管并完成预缓存，缩短下次冷启动
 if("serviceWorker" in navigator && window===window.top && location.protocol.startsWith("http")){
-  window.addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").catch(()=>{});});
+  navigator.serviceWorker.register("sw.js").catch(()=>{});
 }
 </script>
 </body>
