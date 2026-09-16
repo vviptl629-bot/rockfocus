@@ -1,6 +1,14 @@
-const CACHE = "rockfocus-v10";
+const CACHE = "rockfocus-v11";
 const NAV_KEY = "index.html"; // 导航请求统一用缓存里的 index.html 兜底
-const SHELL = ["index.html", "manifest.webmanifest"];
+const SHELL = [
+  "index.html",
+  "manifest.webmanifest",
+  "icon.svg",
+  "icon-192.png",
+  "icon-512.png",
+  "icon-maskable-192.png",
+  "icon-maskable-512.png",
+];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(
