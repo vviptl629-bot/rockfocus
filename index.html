@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="theme-color" id="metaTheme" content="#0a0a0a">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -80,11 +80,15 @@
   .sheet-mask{position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
     opacity:0;pointer-events:none;transition:opacity .22s;z-index:60}
   .sheet-mask.show{opacity:1;pointer-events:auto}
-  .sheet{position:fixed;left:0;right:0;bottom:0;z-index:61;width:100%;max-width:480px;margin:0 auto;
+  /* 键盘弹出时用 --kb（visualViewport 算出的键盘高度）把卡片整体抬到键盘上方 */
+  html{scroll-padding-bottom:calc(90px + var(--kb,0px))}
+  .sheet{position:fixed;left:0;right:0;bottom:var(--kb,0px);z-index:61;width:100%;max-width:480px;margin:0 auto;
     background:var(--surface);border:1px solid var(--line);border-bottom:none;border-radius:22px 22px 0 0;
     padding:10px 18px calc(18px + var(--safe-b));transform:translateY(102%);
+    max-height:calc(100vh - var(--kb,0px) - 10px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
     transition:transform .28s cubic-bezier(.22,.9,.3,1);box-shadow:0 -18px 40px -18px rgba(0,0,0,.5)}
   .sheet.show{transform:translateY(0)}
+  .sheet.kb{padding-bottom:16px}
   .sheet-grip{width:40px;height:4px;border-radius:999px;background:var(--line2);margin:2px auto 14px}
   .sheet h3{margin:0 0 5px;font-size:16px;font-weight:700}
   .sheet .sd{font-size:12.5px;color:var(--muted);margin-bottom:14px;line-height:1.55}
@@ -178,12 +182,18 @@
   .th-compose button{margin-top:9px;width:100%;padding:11px;border:none;border-radius:10px;cursor:pointer;
     background:linear-gradient(180deg,var(--purple),var(--purple2));color:#0a0a0a;font-size:14px;font-weight:700}
   .th-list{display:flex;flex-direction:column;gap:12px;margin:0 2px}
-  .th{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);padding:14px;position:relative}
-  .th .meta{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:8px}
-  .th .tag{display:inline-flex;align-items:center;gap:5px}
-  .th .tag .dot{width:8px;height:8px;border-radius:50%}
-  .th .body{font-size:14.5px;line-height:1.6;color:var(--txt);white-space:pre-wrap;word-break:break-word}
-  .th .del{position:absolute;top:10px;right:12px;color:var(--faint);font-size:14px;cursor:pointer;padding:4px 6px}
+  .th{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);padding:13px 14px 14px}
+  /* meta 一行 flex：左标签 / 右时间 / 末位删除钮。删除钮不再绝对定位，从根上消除与时间的重叠 */
+  .th .meta{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--muted);margin-bottom:9px}
+  .th .tag{display:inline-flex;align-items:center;gap:5px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .th .tag .dot{width:8px;height:8px;border-radius:50%;flex:none}
+  .th .time{margin-left:auto;white-space:nowrap;flex:none}
+  .th .del{flex:none;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;
+    margin:-5px -7px -5px 0;border-radius:9px;color:var(--faint);font-size:13px;line-height:1;cursor:pointer;transition:.15s}
+  .th .del:active{background:var(--surface2);color:var(--txt)}
+  /* 想法正文：白字内嵌黑框 */
+  .th .body{background:#0c0d10;border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:12px 13px;
+    font-size:14.5px;line-height:1.65;color:#f4f4f6;white-space:pre-wrap;word-break:break-word}
   .empty{color:var(--faint);font-size:13.5px;text-align:center;padding:30px 0}
 
   /* settings */
@@ -542,6 +552,25 @@ function addLabel(){
   const l={id:uid(),name,color:"#cccccc"};state.labels.push(l);l.color=monoColor(l.id);selLabel=l.id;save();renderHome();toast("已添加标签");
 }
 
+/* ---------- 键盘 / 视觉视口同步 ---------- */
+/* 底部卡片是 position:fixed，安卓键盘弹出时它不会自己上移，会被键盘盖住。
+   这里用 visualViewport 算出被键盘占掉的高度写入 --kb，让 .sheet 的 bottom 跟着抬起；
+   .sheet 同时限高可滚动，保证「数字输入框 / 步进 / 确定」始终完整可见。
+   若浏览器支持 interactive-widget=resizes-content，innerHeight 会同步变小、算出的 kb≈0，不会重复上移。 */
+function syncViewport(){
+  const vv=window.visualViewport;
+  let kb=vv?Math.round(window.innerHeight-vv.height-(vv.offsetTop||0)):0;
+  if(kb<24)kb=0;                                  /* 滤掉地址栏收缩等噪声 */
+  document.documentElement.style.setProperty("--kb",kb+"px");
+  const sh=$("#cust-sheet");if(sh)sh.classList.toggle("kb",kb>0);
+}
+if(window.visualViewport){
+  window.visualViewport.addEventListener("resize",syncViewport);
+  window.visualViewport.addEventListener("scroll",syncViewport);
+}
+window.addEventListener("resize",syncViewport);
+window.addEventListener("orientationchange",()=>setTimeout(syncViewport,320));
+
 /* ---------- 自定义时长卡片 ---------- */
 function openCust(){
   const i=$("#cust-input");
@@ -549,8 +578,10 @@ function openCust(){
   $("#cust-mask").classList.add("show");
   $("#cust-sheet").classList.add("show");
   setTimeout(()=>{try{i.focus();i.setSelectionRange(0,String(i.value).length);}catch(e){}},260);
+  setTimeout(syncViewport,240);   /* 卡片滑出时先抬一次 */
+  setTimeout(syncViewport,560);   /* 键盘完全弹出后再校正一次 */
 }
-function closeCust(){$("#cust-mask").classList.remove("show");$("#cust-sheet").classList.remove("show");}
+function closeCust(){syncViewport();$("#cust-mask").classList.remove("show");$("#cust-sheet").classList.remove("show");}
 function applyCust(){
   const v=Math.round(+$("#cust-input").value);
   if(!v||v<1){toast("请输入 1 分钟以上的数字");return;}
@@ -698,16 +729,18 @@ function renderThoughts(){
     const d=new Date(it.at);
     const dd=`${d.getMonth()+1}月${d.getDate()}日 ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
     const e=document.createElement("div");e.className="th";
-    e.innerHTML=`<div class="meta"><span class="tag"><span class="dot" style="background:${l?monoColor(l.id):"#888"}"></span>${l?l.name:"随手记"}</span><span>${dd}${it.min?" · "+it.min+"分":""}</span></div>
+    e.innerHTML=`<div class="meta"><span class="tag"><span class="dot" style="background:${l?monoColor(l.id):"#888"}"></span>${l?l.name:"随手记"}</span><span class="time">${dd}${it.min?" · "+it.min+"分":""}</span></div>
       <div class="body">${escapeHtml(it.text)}</div>`;
     if(it.mid){
-      const x=document.createElement("span");x.className="del";x.textContent="✕";x.title="删除";
-      x.onclick=()=>{
+      const x=document.createElement("span");x.className="del";x.textContent="✕";
+      x.title="删除";x.setAttribute("role","button");x.setAttribute("aria-label","删除这条想法");
+      x.onclick=ev=>{
+        ev.stopPropagation();
         if(!confirm("删除这条想法？"))return;
         state.manualThoughts=state.manualThoughts.filter(m=>m.id!==it.mid);
         save();renderThoughts();toast("已删除");
       };
-      e.appendChild(x);
+      e.querySelector(".meta").appendChild(x);
     }
     list.appendChild(e);
   });
