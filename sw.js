@@ -1,4 +1,4 @@
-const CACHE = "rockfocus-v5";
+const CACHE = "rockfocus-v6";
 const SHELL = ["index.html", "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", (e) => {
@@ -26,5 +26,16 @@ self.addEventListener("fetch", (e) => {
         return r;
       }).catch(() => caches.match("index.html"))
     )
+  );
+});
+
+// 点击提醒通知 → 回到应用（聚焦已有窗口，否则新开）
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  e.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((cs) => {
+      for (const c of cs) { if ("focus" in c) return c.focus(); }
+      if (self.clients.openWindow) return self.clients.openWindow(self.registration.scope);
+    })
   );
 });
