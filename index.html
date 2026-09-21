@@ -550,6 +550,31 @@ function dayKey(ts){const d=new Date(ts);return d.getFullYear()+"-"+(d.getMonth(
 function fmtDur(ms){const s=Math.max(0,Math.round(ms/1000));const m=Math.floor(s/60),ss=s%60;return m+"<small>:"+String(ss).padStart(2,"0")+"</small>";}
 /* ---------- 提醒：声音（持续约 4 秒）---------- */
 const ALERT_MS=4000;                        // 提醒时长：约 4 秒
+/* 铃声素材：happy-stroll.mp3 的【前 10 秒】（ffmpeg -t 10 -c:a copy 原音质裁出来的片段，
+   约 235KB，比整曲 1.5MB 小得多，离线缓存与首次加载都快）。 */
+const RING_SRC="happy-stroll.mp3";
+const RING_SEC=10;                          // 素材实际长度（秒）
+/* 出声改走 <audio> 元素而不是 Web Audio 解码：
+   移动端后台/锁屏时 AudioContext 会被挂起，Web Audio 出不了声；
+   媒体元素属于"真实的媒体播放"，iOS/Android 都允许它在后台继续发声。
+   两点硬约束：① 必须挂进 DOM（detached 元素在部分安卓内核里后台会被直接掐掉）；
+               ② play() 的结论要按 Promise 判，后台是【异步 reject】。 */
+let ringEl=null;
+function getRingEl(){
+  try{
+    if(!ringEl){
+      ringEl=document.createElement("audio");
+      ringEl.src=RING_SRC;ringEl.preload="auto";ringEl.loop=true;ringEl.volume=1;
+      ringEl.setAttribute("playsinline","");ringEl.setAttribute("webkit-playsinline","");
+      ringEl.style.cssText="position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:-9999px;top:0;";
+      document.body.appendChild(ringEl);
+    }
+  }catch(e){}
+  return ringEl;
+}
+function stopRing(){
+  try{if(ringEl){clearTimeout(ringEl._t);ringEl.pause();ringEl.currentTime=0;}}catch(e){}
+}
 const SOUNDS={
   bell:{type:"sine",gap:0,dur:1.1,notes:[784,1046.5]},
   chime:{type:"triangle",gap:0.13,dur:0.5,notes:[659.25,783.99,987.77]},
@@ -563,8 +588,8 @@ function getCtx(){
   }catch(e){return null;}
   return audioCtx;
 }
-// 持续的提醒声：在 ALERT_MS 窗口内重复柔和铃声
-function playAlert(ms){
+// 合成音（这本来是默认铃声）：素材不可用时降级为它，保证"至少有声"
+function playSynth(ms){
   ms=ms||ALERT_MS;
   if(!state.settings.alertSound)return;                // 关闭声音提醒时不发声
   const ctx=getCtx();if(!ctx)return;
@@ -585,6 +610,40 @@ function playAlert(ms){
       o.start(gs);o.stop(gs+hold+0.05);
     });
   }
+}
+// 提醒声：优先播 mp3 素材（前 10 秒，loop 铺满提醒窗口），失败才退回合成音。
+// 元素有没有真出声，不能只看 play() 的同步返回值 —— 后台是异步 reject，两条路都要堵死。
+function playAlert(ms){
+  ms=ms||ALERT_MS;
+  if(!state.settings.alertSound)return;                // 关闭声音提醒时不发声
+  stopRing();
+  const el=getRingEl();
+  let ok=false;
+  if(el){
+    try{
+      el.currentTime=0;el.volume=1;
+      const pr=el.play();
+      if(pr&&pr.catch)pr.catch(()=>{try{playSynth(ms);}catch(e){}});   // 异步被拒（后台常见）→ 合成音兜底
+      clearTimeout(el._t);
+      el._t=setTimeout(()=>{try{el.pause();el.currentTime=0;}catch(e){}},ms);
+      ok=true;
+    }catch(e){}
+  }
+  if(!ok){playSynth(ms);return ok;}                    // 同步异常（连元素都建不出来）→ 直接合成音
+  /* 兜底复查：素材可能"排上了却没真出声"（后台被拒 / 文件缺失 / 解码失败）——
+     实测把素材请求掐掉时，el.play() 既不抛同步异常、也不 reject，只按返回值判断会漏掉。
+     窗口开跑约 600ms 后回看 currentTime 有没有真的往前走，没走就补一声合成音。
+     宁可两声叠一下，也不能彻底没声。 */
+  try{
+    clearTimeout(el._chk);
+    el._chk=setTimeout(function(){
+      try{
+        var alive=el&&!el.paused&&el.currentTime>0.05;
+        if(!alive)playSynth(ms);
+      }catch(e){}
+    },600);
+  }catch(e){}
+  return ok;
 }
 // 统一提醒：声音 + （可选）系统通知
 // 注意：不叫 alert —— 覆盖浏览器原生 alert() 会埋雷（将来任何依赖原生弹窗的代码会静默失效）
@@ -609,7 +668,7 @@ function autoGrow(el,max){
   el.style.height=Math.min(el.scrollHeight,max||240)+"px";
 }
 // iOS 自动播放策略：首个用户手势时创建并解锁 AudioContext
-document.addEventListener("pointerdown",()=>{getCtx();},{passive:true});
+document.addEventListener("pointerdown",()=>{getCtx();try{const el=getRingEl();if(el&&el.readyState===0)el.load();}catch(e){}},{passive:true});
 function toast(t){const el=$("#toast");el.textContent=t;el.classList.add("show");clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove("show"),1900);}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 /* 标签配色：色值由标签自己的 slot 决定，与它在列表里的位置无关。
@@ -1251,7 +1310,7 @@ $("#calPrev").onclick=()=>{calM--;if(calM<0){calM=11;calY--;}drawCal();};
 $("#calNext").onclick=()=>{calM++;if(calM>11){calM=0;calY++;}drawCal();};
 
 /* settings bindings */
-$("#sw-sound").onclick=function(){state.settings.alertSound=!state.settings.alertSound;this.classList.toggle("on",state.settings.alertSound);save();if(state.settings.alertSound)playAlert();};
+$("#sw-sound").onclick=function(){state.settings.alertSound=!state.settings.alertSound;this.classList.toggle("on",state.settings.alertSound);save();if(state.settings.alertSound)playAlert();else stopRing();};
 $$("#sound-seg button").forEach(b=>b.onclick=()=>{
   state.settings.soundType=b.dataset.s;save();renderSettings();playAlert();
 });
