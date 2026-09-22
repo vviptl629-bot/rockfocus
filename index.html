@@ -418,7 +418,7 @@
       <div class="set-row"><span class="k">每日目标(分)</span><input id="in-goal" type="number" inputmode="numeric"></div>
     </div>
     <button class="btn-ghost" id="btn-test-sound">测试提醒声音</button>
-    <p class="hint">提醒：专注开始轻响一声；<strong>专注结束</strong>与<strong>离开标签页弹回专注盾</strong>时会持续提醒约 4 秒。<br>
+    <p class="hint">提醒：<strong>专注结束</strong>会响铃并弹出记录卡片；<strong>离开标签页弹回专注盾</strong>时也会持续提醒约 4 秒。<br>
     声音：iOS 静音拨片开启时 Safari 不播放网页声音；安卓勿扰模式会按系统设置处理。<br>
     系统通知：开启后提醒会同时弹出系统通知，点通知可直接回到应用。<br>
     无论何种模式，专注计时本身都不受影响。</p>
@@ -1041,8 +1041,7 @@ function startFocus(){
   $("#rock").setAttribute("transform","translate(0,0)");
   updateFocus();
   timer.tick=setInterval(updateFocus,250);
-  preloadRingBuf();   /* v18 · 手势内就把 mp3 解成 AudioBuffer，到点时零延迟 */
-  fireAlert(1200);
+  preloadRingBuf();   /* 手势内把 mp3 解成 AudioBuffer，到点零延迟响铃；开始不发声 */
   saveTimer();
 }
 function updateFocus(){
