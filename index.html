@@ -553,8 +553,8 @@ function dayKey(ts){const d=new Date(ts);return d.getFullYear()+"-"+(d.getMonth(
 function fmtDur(ms){const s=Math.max(0,Math.round(ms/1000));const m=Math.floor(s/60),ss=s%60;return m+"<small>:"+String(ss).padStart(2,"0")+"</small>";}
 /* v18 · 数字统一出口：≥1000 取整，否则最多 1 位小数。绝不放原始浮点进 DOM。 */
 function fmtNum(v){const x=Number(v)||0;return Math.abs(x)>=1000?String(Math.round(x)):String(Math.round(x*10)/10);}
-/* ---------- 提醒：声音（持续约 4 秒）---------- */
-const ALERT_MS=4000;                        // 提醒时长：约 4 秒
+/* ---------- 提醒：声音（持续约 20 秒）---------- */
+const ALERT_MS=20000;                       // 提醒时长：约 20 秒（mp3 素材前 10 秒会 loop 铺满）
 /* 铃声素材：happy-stroll.mp3 的【前 10 秒】（ffmpeg -t 10 -c:a copy 原音质裁出来的片段，
    约 235KB，比整曲 1.5MB 小得多，离线缓存与首次加载都快）。 */
 const RING_SRC="happy-stroll.mp3";
@@ -1371,7 +1371,7 @@ $$("#theme-seg button").forEach(b=>b.onclick=()=>{
   state.settings.theme=b.dataset.t;save();applyTheme();
   renderAll();   /* 标签配色跟着主题走，要整体重画 */
 });
-$("#btn-test-sound").onclick=()=>{getCtx();fireAlert(ALERT_MS,"RockFocus 测试提醒","提醒声音（约 4 秒）");toast("已触发提醒（约 4 秒）");};
+$("#btn-test-sound").onclick=()=>{getCtx();fireAlert(ALERT_MS,"RockFocus 测试提醒","提醒声音（约 20 秒）");toast("已触发提醒（约 20 秒）");};
 $("#sw-sync").onclick=function(){state.settings.autoSync=!state.settings.autoSync;this.classList.toggle("on");save();if(state.settings.autoSync)startAutoSync();};
 $("#sw-notify").onclick=function(){state.settings.notify=!state.settings.notify;this.classList.toggle("on",state.settings.notify);save();if(state.settings.notify)requestNotify();setTimeout(renderNotifyStatus,300);};
 $("#in-goal").onchange=function(){state.settings.goal=Math.max(1,+this.value||60);save();};
