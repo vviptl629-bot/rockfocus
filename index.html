@@ -245,7 +245,6 @@
   .th .act{display:inline-flex;align-items:center;justify-content:center;height:26px;padding:0 7px;border-radius:9px;
     color:var(--faint);font-size:12px;line-height:1;cursor:pointer;transition:.15s}
   .th .act:active{background:var(--surface2);color:var(--txt)}
-  .th .act.del{font-size:13px;padding:0 6px}
   /* v21 · 想法行内编辑 */
   .th-edit{margin-top:2px}
   .th-edit textarea{width:100%;min-height:70px;max-height:240px;overflow-y:auto;background:var(--bg2);border:1px solid var(--line);
@@ -255,6 +254,7 @@
     font-family:inherit;border:1px solid var(--line)}
   .th-btn.ghost{background:var(--surface2);color:var(--muted)}
   .th-btn.primary{background:linear-gradient(180deg,var(--purple),var(--purple2));border-color:transparent;color:var(--on-accent)}
+  .th-btn.danger{background:var(--surface2);color:#fca5a5;border-color:rgba(252,165,165,.32)}
   .empty{color:var(--faint);font-size:13.5px;text-align:center;padding:30px 0}
 
   /* settings */
@@ -1271,22 +1271,10 @@ function thItem(it){
     <div class="body">${escapeHtml(it.text)}</div>`;
   const acts=document.createElement("span");acts.className="acts";
   const ed=document.createElement("span");ed.className="act edit";ed.textContent="编辑";
-  ed.title="编辑这条想法";ed.setAttribute("role","button");ed.setAttribute("aria-label","编辑这条想法");ed.tabIndex=0;
+  ed.title="编辑或删除这条想法";ed.setAttribute("role","button");ed.setAttribute("aria-label","编辑或删除这条想法");ed.tabIndex=0;
   ed.onclick=ev=>{ev.stopPropagation();thEdit(e,it);};
   ed.onkeydown=ev=>{if(ev.key==="Enter"||ev.key===" "||ev.key==="Spacebar"){ev.preventDefault();ed.click();}};
   acts.appendChild(ed);
-  if(it.mid){
-    const x=document.createElement("span");x.className="act del";x.textContent="✕";
-    x.title="删除";x.setAttribute("role","button");x.setAttribute("aria-label","删除这条想法");x.tabIndex=0;
-    x.onclick=ev=>{
-      ev.stopPropagation();
-      if(!confirm("删除这条想法？"))return;
-      state.manualThoughts=state.manualThoughts.filter(m=>m.id!==it.mid);
-      save();renderThoughts();toast("已删除");
-    };
-    x.onkeydown=ev=>{if(ev.key==="Enter"||ev.key===" "||ev.key==="Spacebar"){ev.preventDefault();x.click();}};
-    acts.appendChild(x);
-  }
   e.querySelector(".meta").appendChild(acts);
   return e;
 }
@@ -1298,14 +1286,23 @@ function thEdit(box,it){
   const wrap=document.createElement("div");wrap.className="th-edit";
   const ta=document.createElement("textarea");ta.value=old;
   const row=document.createElement("div");row.className="th-edit-row";
+  const del=document.createElement("button");del.type="button";del.className="th-btn danger";del.textContent="删除";
   const cancel=document.createElement("button");cancel.type="button";cancel.className="th-btn ghost";cancel.textContent="取消";
   const ok=document.createElement("button");ok.type="button";ok.className="th-btn primary";ok.textContent="保存";
-  row.appendChild(cancel);row.appendChild(ok);
+  row.appendChild(del);row.appendChild(cancel);row.appendChild(ok);
   wrap.appendChild(ta);wrap.appendChild(row);box.appendChild(wrap);
   try{autoGrow(ta,240);}catch(e){}
   ta.focus();try{ta.setSelectionRange(old.length,old.length);}catch(e){}
   const close=()=>{wrap.remove();if(body)body.style.display="";};
   cancel.onclick=ev=>{ev.stopPropagation();close();};
+  del.onclick=ev=>{
+    ev.stopPropagation();
+    /* 专注产生的想法：只删想法本身，这一轮的时长/标签等记录保留 */
+    if(!confirm(it.mid?"删除这条想法？":"删除这条想法？（这一轮的专注记录会保留）"))return;
+    if(it.mid){state.manualThoughts=state.manualThoughts.filter(m=>m.id!==it.mid);}
+    else if(it.sid){const s=state.sessions.find(x=>x.id===it.sid);if(s)s.thought="";}
+    save();renderThoughts();renderReview();renderHome();toast("已删除");
+  };
   ok.onclick=ev=>{
     ev.stopPropagation();
     const v=ta.value.trim();
