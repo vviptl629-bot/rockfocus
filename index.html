@@ -231,6 +231,30 @@
   /* 想法正文：与页面同一套配色（跟随主题），不加黑框 */
   .th .body{font-size:14.5px;line-height:1.65;color:var(--txt);white-space:pre-wrap;word-break:break-word;
     user-select:text;-webkit-user-select:text;-webkit-touch-callout:default;cursor:text}
+  /* v21 · 想法按日期折叠分组 */
+  .th-grp{margin-bottom:14px}
+  .th-day{display:flex;align-items:center;gap:8px;width:100%;padding:6px 2px;cursor:pointer;
+    background:none;border:none;font-family:inherit;font-size:12.5px;color:var(--muted);text-align:left}
+  .th-day .chev{flex:none;font-size:11px;color:var(--faint);transition:transform .18s;transform:rotate(0deg)}
+  .th-grp.folded .th-day .chev{transform:rotate(-90deg)}
+  .th-day .dl{font-weight:700;color:var(--txt);font-size:13px}
+  .th-day .cn{margin-left:auto;flex:none;color:var(--faint)}
+  .th-grp.folded .th-items{display:none}
+  .th-items{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+  .th .acts{display:inline-flex;align-items:center;gap:2px;flex:none;margin:-5px -8px -5px 0}
+  .th .act{display:inline-flex;align-items:center;justify-content:center;height:26px;padding:0 7px;border-radius:9px;
+    color:var(--faint);font-size:12px;line-height:1;cursor:pointer;transition:.15s}
+  .th .act:active{background:var(--surface2);color:var(--txt)}
+  .th .act.del{font-size:13px;padding:0 6px}
+  /* v21 · 想法行内编辑 */
+  .th-edit{margin-top:2px}
+  .th-edit textarea{width:100%;min-height:70px;max-height:240px;overflow-y:auto;background:var(--bg2);border:1px solid var(--line);
+    border-radius:10px;color:var(--txt);font-size:14.5px;line-height:1.65;padding:10px 11px;resize:none;font-family:inherit}
+  .th-edit-row{display:flex;gap:8px;margin-top:8px}
+  .th-btn{flex:1;padding:9px 0;border-radius:10px;font-size:13.5px;font-weight:600;cursor:pointer;
+    font-family:inherit;border:1px solid var(--line)}
+  .th-btn.ghost{background:var(--surface2);color:var(--muted)}
+  .th-btn.primary{background:linear-gradient(180deg,var(--purple),var(--purple2));border-color:transparent;color:var(--on-accent)}
   .empty{color:var(--faint);font-size:13.5px;text-align:center;padding:30px 0}
 
   /* settings */
@@ -1117,6 +1141,7 @@ function finishSession(auto){
   if(auto)toast("这一刻，石头到了山顶");
 }
 function commitThought(skip){
+  try{stopRing();}catch(e){}   /* v21：点跳过/保存即停铃，不再把整段铃声放完 */
   const dur=timer._lastDur||0;
   const s={id:uid(),labelId:timer.labelId,start:timer.startTs,end:Date.now(),durationMin:dur,thought:skip?"":$("#c-thought").value.trim(),distractions:timer.distract};
   state.sessions.push(s);save();
@@ -1189,39 +1214,109 @@ function drawLstat(){
 }
 
 /* ---------- thoughts ---------- */
+/* v21：想法按日期分组折叠展示 + 就地编辑 */
+const TH_FOLD_KEY="rockfocus_thfolds";
+let thFolds={};
+try{const v=JSON.parse(localStorage.getItem(TH_FOLD_KEY));if(v&&typeof v==="object")thFolds=v;}catch(e){}
+function saveThFolds(){try{localStorage.setItem(TH_FOLD_KEY,JSON.stringify(thFolds));}catch(e){}}
+function dayKey(ts){const d=new Date(ts);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+function dayLabel(ts){
+  const d=new Date(ts),k=dayKey(ts),tk=dayKey(Date.now()),yk=dayKey(Date.now()-864e5);
+  const s=`${d.getMonth()+1}月${d.getDate()}日 周${"日一二三四五六"[d.getDay()]}`;
+  if(k===tk)return "今天 · "+s;
+  if(k===yk)return "昨天 · "+s;
+  return s;
+}
 function renderThoughts(){
   const list=$("#th-list");list.innerHTML="";
   const items=[];
   state.sessions.forEach(s=>{
-    if(s.thought)items.push({at:s.end,text:s.thought,tag:s.labelId,min:s.durationMin});
+    if(s.thought)items.push({at:s.end,text:s.thought,tag:s.labelId,min:s.durationMin,sid:s.id});
   });
   state.manualThoughts.forEach(m=>items.push({at:m.at,text:m.text,mid:m.id}));
   items.sort((a,b)=>b.at-a.at);
   $("#th-count").textContent=items.length+" 条";
   if(!items.length){list.innerHTML='<div class="empty">在上面写下第一条想法吧</div>';return;}
+  /* 按日期分组：列表已按时间倒序，分组天然也是新的在前 */
+  const groups=[],idx={};
   items.forEach(it=>{
-    const l=state.labels.find(x=>x.id===it.tag);
-    const d=new Date(it.at);
-    const dd=`${d.getMonth()+1}月${d.getDate()}日 ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
-    const e=document.createElement("div");e.className="th";
-    e.innerHTML=`<div class="meta"><span class="tag"><span class="dot" style="background:${l?monoColor(l.id):"#888"}"></span>${l?escapeHtml(l.name):"随手记"}</span><span class="time">${dd}${it.min?" · "+fmtNum(it.min)+"分":""}</span></div>
-      <div class="body">${escapeHtml(it.text)}</div>`;
-    if(it.mid){
-      const x=document.createElement("span");x.className="del";x.textContent="✕";
-      x.title="删除";x.setAttribute("role","button");x.setAttribute("aria-label","删除这条想法");
-      x.tabIndex=0;
-      x.onclick=ev=>{
-        ev.stopPropagation();
-        if(!confirm("删除这条想法？"))return;
-        state.manualThoughts=state.manualThoughts.filter(m=>m.id!==it.mid);
-        save();renderThoughts();toast("已删除");
-      };
-      x.onkeydown=ev=>{
-        if(ev.key==="Enter"||ev.key===" "||ev.key==="Spacebar"){ev.preventDefault();x.click();}
-      };
-      e.querySelector(".meta").appendChild(x);
-    }
-    list.appendChild(e);
+    const k=dayKey(it.at);
+    if(!idx[k]){idx[k]={key:k,at:it.at,items:[]};groups.push(idx[k]);}
+    idx[k].items.push(it);
+  });
+  const todayK=dayKey(Date.now());
+  groups.forEach(g=>{
+    const defOpen=(g.key===todayK);                 /* 默认只展开今天，更早的收起 */
+    const open=(typeof thFolds[g.key]==="boolean")?thFolds[g.key]:defOpen;
+    const sec=document.createElement("div");sec.className="th-grp"+(open?"":" folded");
+    const head=document.createElement("button");head.type="button";head.className="th-day";
+    head.setAttribute("aria-expanded",open?"true":"false");
+    head.setAttribute("aria-label",dayLabel(g.at)+"，"+g.items.length+" 条，点击展开或收起");
+    head.innerHTML=`<span class="chev" aria-hidden="true">▾</span><span class="dl">${dayLabel(g.at)}</span><span class="cn">${g.items.length} 条</span>`;
+    head.onclick=()=>{
+      thFolds[g.key]=!((typeof thFolds[g.key]==="boolean")?thFolds[g.key]:defOpen);
+      saveThFolds();renderThoughts();
+    };
+    const wrap=document.createElement("div");wrap.className="th-items";
+    g.items.forEach(it=>wrap.appendChild(thItem(it)));
+    sec.appendChild(head);sec.appendChild(wrap);list.appendChild(sec);
+  });
+}
+function thItem(it){
+  const l=state.labels.find(x=>x.id===it.tag);
+  const d=new Date(it.at);
+  const hm=`${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+  const e=document.createElement("div");e.className="th";
+  e.innerHTML=`<div class="meta"><span class="tag"><span class="dot" style="background:${l?monoColor(l.id):"#888"}"></span>${l?escapeHtml(l.name):"随手记"}</span><span class="time">${hm}${it.min?" · "+fmtNum(it.min)+"分":""}</span></div>
+    <div class="body">${escapeHtml(it.text)}</div>`;
+  const acts=document.createElement("span");acts.className="acts";
+  const ed=document.createElement("span");ed.className="act edit";ed.textContent="编辑";
+  ed.title="编辑这条想法";ed.setAttribute("role","button");ed.setAttribute("aria-label","编辑这条想法");ed.tabIndex=0;
+  ed.onclick=ev=>{ev.stopPropagation();thEdit(e,it);};
+  ed.onkeydown=ev=>{if(ev.key==="Enter"||ev.key===" "||ev.key==="Spacebar"){ev.preventDefault();ed.click();}};
+  acts.appendChild(ed);
+  if(it.mid){
+    const x=document.createElement("span");x.className="act del";x.textContent="✕";
+    x.title="删除";x.setAttribute("role","button");x.setAttribute("aria-label","删除这条想法");x.tabIndex=0;
+    x.onclick=ev=>{
+      ev.stopPropagation();
+      if(!confirm("删除这条想法？"))return;
+      state.manualThoughts=state.manualThoughts.filter(m=>m.id!==it.mid);
+      save();renderThoughts();toast("已删除");
+    };
+    x.onkeydown=ev=>{if(ev.key==="Enter"||ev.key===" "||ev.key==="Spacebar"){ev.preventDefault();x.click();}};
+    acts.appendChild(x);
+  }
+  e.querySelector(".meta").appendChild(acts);
+  return e;
+}
+/* 就地编辑：卡片内换成 textarea，保存/取消都在原地完成 */
+function thEdit(box,it){
+  if(box.querySelector(".th-edit"))return;
+  const body=box.querySelector(".body");const old=body?body.textContent:"";
+  if(body)body.style.display="none";
+  const wrap=document.createElement("div");wrap.className="th-edit";
+  const ta=document.createElement("textarea");ta.value=old;
+  const row=document.createElement("div");row.className="th-edit-row";
+  const cancel=document.createElement("button");cancel.type="button";cancel.className="th-btn ghost";cancel.textContent="取消";
+  const ok=document.createElement("button");ok.type="button";ok.className="th-btn primary";ok.textContent="保存";
+  row.appendChild(cancel);row.appendChild(ok);
+  wrap.appendChild(ta);wrap.appendChild(row);box.appendChild(wrap);
+  try{autoGrow(ta,240);}catch(e){}
+  ta.focus();try{ta.setSelectionRange(old.length,old.length);}catch(e){}
+  const close=()=>{wrap.remove();if(body)body.style.display="";};
+  cancel.onclick=ev=>{ev.stopPropagation();close();};
+  ok.onclick=ev=>{
+    ev.stopPropagation();
+    const v=ta.value.trim();
+    if(!v){toast("想法不能为空");return;}
+    if(it.mid){const m=state.manualThoughts.find(x=>x.id===it.mid);if(m)m.text=v;}
+    else if(it.sid){const s=state.sessions.find(x=>x.id===it.sid);if(s)s.thought=v;}
+    save();renderThoughts();renderReview();renderHome();toast("已更新想法");
+  };
+  ta.addEventListener("keydown",ev=>{
+    if((ev.ctrlKey||ev.metaKey)&&ev.key==="Enter"){ev.preventDefault();ok.click();}
+    else if(ev.key==="Escape"){ev.preventDefault();close();}
   });
 }
 function escapeHtml(t){return t.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
@@ -1661,6 +1756,13 @@ $("#in-input").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefau
 /* 完成页：Ctrl/Cmd + Enter 直接保存想法 */
 $("#c-thought").addEventListener("keydown",e=>{
   if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){e.preventDefault();commitThought(false);}
+});
+/* v21：一旦开始录入内容（聚焦或敲第一个字），铃声立刻停 —— 不必等它放完 */
+["#c-thought","#th-new"].forEach(sel=>{
+  const el=$(sel);if(!el)return;
+  const stop=()=>{try{stopRing();}catch(e){}};
+  el.addEventListener("focus",stop);
+  el.addEventListener("input",stop);
 });
 
 /* 开关类控件补键盘语义 */
