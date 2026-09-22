@@ -33,7 +33,7 @@
     --good:#2f7d32; --warn:#9a6200; --on-accent:#fafafa; --knob:#161616;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{margin:0;height:100%}
+  html,body{margin:0;height:100%;max-width:100%;overflow-x:hidden}
   body{
     background:radial-gradient(120% 80% at 50% -10%, var(--bg2) 0%, var(--bg) 55%) fixed;
     color:var(--txt); font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",Roboto,sans-serif;
@@ -53,10 +53,10 @@
   .philo{font-size:12.5px;color:var(--faint);line-height:1.6;margin:0 2px 18px;font-style:italic}
 
   /* stat cards */
-  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:0 2px 18px}
+  .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:0 2px 18px}
   .stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);
-    padding:12px 6px;text-align:center}
-  .stat .n{font-size:22px;font-weight:700;color:var(--txt);line-height:1}
+    padding:12px 6px;text-align:center;min-width:0;overflow:hidden}
+  .stat .n{font-size:22px;font-weight:700;color:var(--txt);line-height:1;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
   .stat .l{font-size:11px;color:var(--muted);margin-top:6px}
 
   /* label picker */
@@ -536,6 +536,9 @@ const DEFAULTS={
 };
 
 let state=load();
+/* v18 · 浮点求和会把 3.9 显示成 3.9000000000000004，把统计卡撑到几倍宽、整页横向能拖走。
+   落盘时把 durationMin 归一化到 1 位小数（只动这一个字段）。 */
+if(Array.isArray(state.sessions))state.sessions.forEach(s=>{if(s){const v=Math.round((+s.durationMin||0)*10)/10;if(v!==s.durationMin)s.durationMin=v;}});
 if(!Array.isArray(state.manualThoughts))state.manualThoughts=[];
 if(!state.settings)state.settings={};
 if(typeof state.settings.alertSound!=="boolean")state.settings.alertSound=true;
@@ -548,6 +551,8 @@ function save(){localStorage.setItem(LS_KEY,JSON.stringify(state));schedulePush(
 /* ---------- utils ---------- */
 function dayKey(ts){const d=new Date(ts);return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();}
 function fmtDur(ms){const s=Math.max(0,Math.round(ms/1000));const m=Math.floor(s/60),ss=s%60;return m+"<small>:"+String(ss).padStart(2,"0")+"</small>";}
+/* v18 · 数字统一出口：≥1000 取整，否则最多 1 位小数。绝不放原始浮点进 DOM。 */
+function fmtNum(v){const x=Number(v)||0;return Math.abs(x)>=1000?String(Math.round(x)):String(Math.round(x*10)/10);}
 /* ---------- 提醒：声音（持续约 4 秒）---------- */
 const ALERT_MS=4000;                        // 提醒时长：约 4 秒
 /* 铃声素材：happy-stroll.mp3 的【前 10 秒】（ffmpeg -t 10 -c:a copy 原音质裁出来的片段，
@@ -574,12 +579,56 @@ function getRingEl(){
 }
 function stopRing(){
   try{if(ringEl){clearTimeout(ringEl._t);ringEl.pause();ringEl.currentTime=0;}}catch(e){}
+  stopRingBuf();   /* v18 · 两条通道一起停，否则锁屏那一路会一直 loop */
 }
 const SOUNDS={
   bell:{type:"sine",gap:0,dur:1.1,notes:[784,1046.5]},
   chime:{type:"triangle",gap:0.13,dur:0.5,notes:[659.25,783.99,987.77]},
   beep:{type:"sine",gap:0.18,dur:0.16,notes:[880,880]}
 };
+/* ---- v18 · 第二通道：mp3 预解码成 AudioBuffer，用 Web Audio 播放 ----
+   为什么必须要有它：锁屏/后台时 <audio> 元素的 play() 会被系统【异步 reject】，
+   而此时 Web Audio 往往是活的（用户实测锁屏听到的是合成音 = 这条通道通着，只是以前兜底给的是合成音）。
+   于是：两条通道并发发射，谁通谁响 —— 不再二选一。
+   解码在【用户手势】里完成，到点那一刻只是 start()，零延迟、不依赖网络、不需要再 decode。 */
+let ringBuf=null,ringBufBusy=false,ringWebSrc=null;
+function preloadRingBuf(){
+  if(ringBuf||ringBufBusy)return;
+  ringBufBusy=true;
+  try{
+    fetch(RING_SRC,{cache:"force-cache"})
+      .then(r=>(r&&r.ok)?r.arrayBuffer():null)
+      .then(ab=>{
+        if(!ab)return;
+        const ctx=getCtx();if(!ctx)return;
+        const pr=ctx.decodeAudioData(ab,(b)=>{if(b)ringBuf=b;},()=>{});
+        if(pr&&pr.then)pr.then(b=>{if(b)ringBuf=b;}).catch(()=>{});
+      })
+      .catch(()=>{})
+      .then(()=>{ringBufBusy=false;});
+  }catch(e){ringBufBusy=false;}
+}
+function stopRingBuf(){
+  try{if(ringWebSrc){ringWebSrc.stop(0);}}catch(e){}
+  ringWebSrc=null;
+}
+function playRingBuf(ms){
+  if(!ringBuf)return false;
+  const ctx=getCtx();if(!ctx)return false;
+  try{
+    if(ctx.state==="suspended"){try{ctx.resume();}catch(e){}}
+    stopRingBuf();
+    const g=ctx.createGain();g.gain.value=1;g.connect(ctx.destination);
+    const s=ctx.createBufferSource();s.buffer=ringBuf;s.loop=true;
+    try{if(ringBuf.duration)s.loopEnd=Math.min(ringBuf.duration,RING_SEC);}catch(e){}
+    s.connect(g);s.start(0);
+    try{s.stop(ctx.currentTime+ms/1000);}catch(e){}
+    ringWebSrc=s;
+    /* 音频时钟若被系统冻住，stop(t) 可能永远不触发 → 再用墙钟兜一层，别让它无限 loop */
+    setTimeout(function(){if(ringWebSrc===s)stopRingBuf();},ms+400);
+    return true;
+  }catch(e){return false;}
+}
 let audioCtx=null;
 function getCtx(){
   try{
@@ -618,18 +667,20 @@ function playAlert(ms){
   if(!state.settings.alertSound)return;                // 关闭声音提醒时不发声
   stopRing();
   const el=getRingEl();
-  let ok=false;
+  let ok=false,webOn=false;
+  /* 元素通道失败时的降级链：先用 Web Audio 播【解码好的 mp3】，没有 buffer 才退回合成音 */
+  const webOrSynth=()=>{ if(webOn)return; webOn=playRingBuf(ms); if(!webOn)playSynth(ms); };
   if(el){
     try{
       el.currentTime=0;el.volume=1;
       const pr=el.play();
-      if(pr&&pr.catch)pr.catch(()=>{try{playSynth(ms);}catch(e){}});   // 异步被拒（后台常见）→ 合成音兜底
+      if(pr&&pr.catch)pr.catch(()=>{clearTimeout(el._t);webOrSynth();});   // 异步被拒（后台/锁屏最常见）→ 走 Web Audio 播 mp3
       clearTimeout(el._t);
       el._t=setTimeout(()=>{try{el.pause();el.currentTime=0;}catch(e){}},ms);
       ok=true;
     }catch(e){}
   }
-  if(!ok){playSynth(ms);return ok;}                    // 同步异常（连元素都建不出来）→ 直接合成音
+  if(!ok){webOrSynth();return webOn;}                  // 同步异常（连元素都建不出来）→ 降级链                    // 同步异常（连元素都建不出来）→ 直接合成音
   /* 兜底复查：素材可能"排上了却没真出声"（后台被拒 / 文件缺失 / 解码失败）——
      实测把素材请求掐掉时，el.play() 既不抛同步异常、也不 reject，只按返回值判断会漏掉。
      窗口开跑约 600ms 后回看 currentTime 有没有真的往前走，没走就补一声合成音。
@@ -639,7 +690,7 @@ function playAlert(ms){
     el._chk=setTimeout(function(){
       try{
         var alive=el&&!el.paused&&el.currentTime>0.05;
-        if(!alive)playSynth(ms);
+        if(!alive)webOrSynth();
       }catch(e){}
     },600);
   }catch(e){}
@@ -668,7 +719,7 @@ function autoGrow(el,max){
   el.style.height=Math.min(el.scrollHeight,max||240)+"px";
 }
 // iOS 自动播放策略：首个用户手势时创建并解锁 AudioContext
-document.addEventListener("pointerdown",()=>{getCtx();try{const el=getRingEl();if(el&&el.readyState===0)el.load();}catch(e){}},{passive:true});
+document.addEventListener("pointerdown",()=>{getCtx();preloadRingBuf();try{const el=getRingEl();if(el&&el.readyState===0)el.load();}catch(e){}},{passive:true});
 function toast(t){const el=$("#toast");el.textContent=t;el.classList.add("show");clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove("show"),1900);}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 /* 标签配色：色值由标签自己的 slot 决定，与它在列表里的位置无关。
@@ -702,6 +753,7 @@ function stats(){
   let streak=0;const d=new Date();
   if(!days.has(dayKey(d))) {d.setDate(d.getDate()-1);if(!days.has(dayKey(d)))streak=0;}
   while(days.has(dayKey(d))){streak++;d.setDate(d.getDate()-1);}
+  mins=Math.round(mins*10)/10;today=Math.round(today*10)/10;   /* v18 · 掐掉浮点尾巴（3.9000000000000004 → 3.9） */
   return {stones,mins,today,streak};
 }
 function minutesOn(ts){const k=dayKey(ts);return state.sessions.filter(s=>dayKey(s.start)===k).reduce((a,s)=>a+s.durationMin,0);}
@@ -712,10 +764,10 @@ const PRESET_DURS=[5,15,25,45,60];   // 预设时长（已移除 90 分钟）
 let lastCustom=30;                    // 记住上次自定义的分钟数
 function renderHome(){
   const st=stats();
-  $("#s-stones").textContent=st.stones;
-  $("#s-mins").textContent=st.mins;
-  $("#s-streak").textContent=st.streak;
-  $("#s-today").textContent=st.today;
+  $("#s-stones").textContent=fmtNum(st.stones);
+  $("#s-mins").textContent=fmtNum(st.mins);
+  $("#s-streak").textContent=fmtNum(st.streak);
+  $("#s-today").textContent=fmtNum(st.today);
   // labels
   const wrap=$("#labels");wrap.innerHTML="";
   state.labels.forEach(l=>{
@@ -989,6 +1041,7 @@ function startFocus(){
   $("#rock").setAttribute("transform","translate(0,0)");
   updateFocus();
   timer.tick=setInterval(updateFocus,250);
+  preloadRingBuf();   /* v18 · 手势内就把 mp3 解成 AudioBuffer，到点时零延迟 */
   fireAlert(1200);
   saveTimer();
 }
@@ -1048,6 +1101,7 @@ function restoreTimer(){
   $("#rock").setAttribute("transform","translate(0,0)");
   updateFocus();
   timer.tick=setInterval(updateFocus,250);
+  preloadRingBuf();
   toast("已恢复上次未结束的专注（剩余 "+Math.ceil(t.remaining/60000)+" 分钟）");
   return true;
 }
@@ -1090,7 +1144,7 @@ $("#shield-back").onclick=()=>{$("#shield").classList.remove("show");};
 let calY,calM;
 function renderReview(){
   const st=stats();
-  $("#rev-total").textContent=`${st.stones} 石头 · ${st.mins} 分钟`;
+  $("#rev-total").textContent=`${st.stones} 石头 · ${fmtNum(st.mins)} 分钟`;
   const now=new Date();calY=calY??now.getFullYear();calM=calM??now.getMonth();
   drawCal();drawWeek();drawLstat();
 }
@@ -1115,7 +1169,7 @@ function drawWeek(){
     const d=new Date();d.setDate(d.getDate()-i);const m=minutesOn(d.getTime());
     const h=Math.min(100,Math.round(m/ (state.settings.goal||60) *100));
     const e=document.createElement("div");e.className="wk";
-    e.innerHTML=`<div class="v">${m||""}</div><div class="bar" style="height:${Math.max(4,h)}px"></div><div class="d">${names[d.getDay()]}</div>`;
+    e.innerHTML=`<div class="v">${m?fmtNum(m):""}</div><div class="bar" style="height:${Math.max(4,h)}px"></div><div class="d">${names[d.getDay()]}</div>`;
     wk.appendChild(e);
   }
 }
@@ -1130,7 +1184,7 @@ function drawLstat(){
     const r=document.createElement("div");r.className="lrow";
     r.innerHTML=`<span class="dot" style="background:${monoColor(a.id)}"></span><span class="nm">${escapeHtml(a.name)}</span>
       <span class="track"><span class="fill" style="width:${a.min/max*100}%;background:${monoColor(a.id)}"></span></span>
-      <span class="vv">${a.min}分·${a.n}石</span>`;
+      <span class="vv">${fmtNum(a.min)}分·${a.n}石</span>`;
     ls.appendChild(r);
   });
 }
@@ -1151,7 +1205,7 @@ function renderThoughts(){
     const d=new Date(it.at);
     const dd=`${d.getMonth()+1}月${d.getDate()}日 ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
     const e=document.createElement("div");e.className="th";
-    e.innerHTML=`<div class="meta"><span class="tag"><span class="dot" style="background:${l?monoColor(l.id):"#888"}"></span>${l?escapeHtml(l.name):"随手记"}</span><span class="time">${dd}${it.min?" · "+it.min+"分":""}</span></div>
+    e.innerHTML=`<div class="meta"><span class="tag"><span class="dot" style="background:${l?monoColor(l.id):"#888"}"></span>${l?escapeHtml(l.name):"随手记"}</span><span class="time">${dd}${it.min?" · "+fmtNum(it.min)+"分":""}</span></div>
       <div class="body">${escapeHtml(it.text)}</div>`;
     if(it.mid){
       const x=document.createElement("span");x.className="del";x.textContent="✕";

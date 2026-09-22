@@ -1,4 +1,4 @@
-const CACHE = "rockfocus-v17";
+const CACHE = "rockfocus-v18";
 const NAV_KEY = "index.html"; // 导航请求统一用缓存里的 index.html 兜底
 const SHELL = [
   "index.html",
@@ -30,6 +30,17 @@ self.addEventListener("activate", (e) => {
       .keys()
       .then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
+      // v18 · 新版本装好就提醒所有已打开窗口重新加载一次。
+      // 否则本轮拿到的是旧缓存里的 HTML，用户得「彻底关掉再开」两次才看到新版，容易误判"没生效"。
+      // 每个 SW 版本只会触发一次，不会循环。
+      .then(() => self.clients.matchAll({ type: "window", includeUncontrolled: true }))
+      .then((cs) =>
+        Promise.all(
+          cs.map((c) => {
+            try { return c.navigate ? c.navigate(c.url) : null; } catch (e) { return null; }
+          })
+        )
+      )
   );
 });
 
